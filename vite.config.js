@@ -3,6 +3,7 @@ import { installGlobals } from "@remix-run/node";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import { vercelPreset } from "@vercel/remix/vite";
 
 installGlobals({ nativeFetch: true });
 
@@ -54,6 +55,7 @@ export default defineConfig({
   plugins: [
     nodePolyfills({ include: ["buffer", "process"] }),
     remix({
+      presets: [vercelPreset()],
       ignoredRouteFiles: ["**/.*"],
       future: {
         v3_fetcherPersist: true,
