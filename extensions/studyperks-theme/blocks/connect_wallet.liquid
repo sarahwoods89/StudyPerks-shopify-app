@@ -1,0 +1,30 @@
+<div class="studyperks-wrapper">
+  <button
+    id="studyperks-wallet-connect"
+    class="studyperks-badge"
+    type="button"
+    aria-label="StudyPerks — connect your wallet to claim your student discount"
+  >
+    <img
+      src="{{ 'StudyPerksLogo.png' | asset_url }}"
+      alt="StudyPerks"
+      class="studyperks-badge__logo"
+    />
+    <span class="studyperks-badge__tick" id="studyperks-tick" aria-hidden="true">✓</span>
+  </button>
+
+  <div class="studyperks-tooltip" id="studyperks-tooltip">
+    Connect your Phantom wallet to claim your student discount
+  </div>
+</div>
+
+{{ 'connect-wallet.js' | asset_url | script_tag }}
+{{ 'studyperks.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "StudyPerks Badge",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}

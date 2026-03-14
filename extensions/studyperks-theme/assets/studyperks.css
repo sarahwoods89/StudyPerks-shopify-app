@@ -1,0 +1,93 @@
+.studyperks-wrapper {
+  display: inline-block;
+  position: relative;
+}
+
+/* ── The badge button ── */
+.studyperks-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1.5px solid #5B21B6;
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(91, 33, 182, 0.1);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1;
+}
+
+.studyperks-badge:hover:not(:disabled) {
+  box-shadow: 0 3px 10px rgba(91, 33, 182, 0.2);
+  transform: translateY(-1px);
+}
+
+.studyperks-badge:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* ── Logo ── */
+.studyperks-badge__logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Tick — hidden by default ── */
+.studyperks-badge__tick {
+  display: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: #16a34a;
+  line-height: 1;
+}
+
+/* ── Applied state ── */
+.studyperks-badge--applied {
+  border-color: #16a34a;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(22, 163, 74, 0.12);
+  cursor: default;
+}
+
+.studyperks-badge--applied .studyperks-badge__tick {
+  display: inline;
+}
+
+/* ── Tooltip ── */
+.studyperks-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f1f1f;
+  color: #fff;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.studyperks-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1f1f1f;
+}
+
+.studyperks-wrapper:hover .studyperks-tooltip:not(.studyperks-tooltip--hidden) {
+  display: block;
+}

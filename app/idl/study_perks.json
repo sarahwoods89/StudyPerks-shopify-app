@@ -1,0 +1,485 @@
+{
+  "address": "BjRvnRwvoL6734a72SJeQFf8rd1hHa6WTW1ywGyDRGH5",
+  "metadata": {
+    "name": "study_perks",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "burn_student_token",
+      "docs": [
+        "Burn a student token to invalidate it",
+        "",
+        "Accounts:",
+        "0. `[writable, signer]` fee_payer: [AccountInfo]",
+        "1. `[writable]` config: [Config]",
+        "2. `[writable]` student_token: [StudentToken]",
+        "3. `[signer]` student_wallet: [AccountInfo] The student's wallet address",
+        "",
+        "Data:",
+        "- email: [String] Student's email address"
+      ],
+      "discriminator": [
+        4,
+        250,
+        203,
+        0,
+        87,
+        46,
+        18,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "student_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  117,
+                  100,
+                  101,
+                  110,
+                  116,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "email"
+              },
+              {
+                "kind": "account",
+                "path": "student_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "student_wallet",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "email",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "docs": [
+        "Initialize the program configuration",
+        "",
+        "Accounts:",
+        "0. `[writable, signer]` fee_payer: [AccountInfo]",
+        "1. `[writable]` config: [Config]",
+        "2. `[signer]` admin: [AccountInfo] The admin account that will manage the program",
+        "3. `[]` system_program: [AccountInfo] Auto-generated, for account initialization"
+      ],
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "renew_student_token",
+      "docs": [
+        "Renew an existing student token",
+        "",
+        "Accounts:",
+        "0. `[writable, signer]` fee_payer: [AccountInfo]",
+        "1. `[writable]` config: [Config]",
+        "2. `[writable]` student_token: [StudentToken]",
+        "3. `[signer]` student_wallet: [AccountInfo] The student's wallet address",
+        "",
+        "Data:",
+        "- email: [String] Student's email address",
+        "- new_expiry_date: [i64] New expiry timestamp for the student token"
+      ],
+      "discriminator": [
+        85,
+        192,
+        14,
+        59,
+        152,
+        120,
+        190,
+        175
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "student_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  117,
+                  100,
+                  101,
+                  110,
+                  116,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "email"
+              },
+              {
+                "kind": "account",
+                "path": "student_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "student_wallet",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "email",
+          "type": "string"
+        },
+        {
+          "name": "new_expiry_date",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "verify_student_identity",
+      "docs": [
+        "Verify a student's identity and create a token",
+        "",
+        "Accounts:",
+        "0. `[writable, signer]` fee_payer: [AccountInfo]",
+        "1. `[writable]` config: [Config]",
+        "2. `[writable]` student_token: [StudentToken]",
+        "3. `[signer]` student_wallet: [AccountInfo] The student's wallet address",
+        "4. `[]` system_program: [AccountInfo] Auto-generated, for account initialization",
+        "",
+        "Data:",
+        "- email: [String] Student's email address",
+        "- expiry_date: [i64] Expiry timestamp for the student token"
+      ],
+      "discriminator": [
+        73,
+        59,
+        9,
+        32,
+        52,
+        170,
+        221,
+        162
+      ],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "student_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  117,
+                  100,
+                  101,
+                  110,
+                  116,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "email"
+              },
+              {
+                "kind": "account",
+                "path": "student_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "student_wallet",
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "email",
+          "type": "string"
+        },
+        {
+          "name": "expiry_date",
+          "type": "i64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "StudentToken",
+      "discriminator": [
+        63,
+        56,
+        116,
+        233,
+        170,
+        234,
+        250,
+        192
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized access to the program"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidEmailFormat",
+      "msg": "Invalid email format provided"
+    },
+    {
+      "code": 6002,
+      "name": "TokenAlreadyExists",
+      "msg": "Student token already exists"
+    },
+    {
+      "code": 6003,
+      "name": "TokenNotFound",
+      "msg": "Student token not found"
+    },
+    {
+      "code": 6004,
+      "name": "TokenExpired",
+      "msg": "Student token has expired"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidExpiryDate",
+      "msg": "Invalid expiry date provided"
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StudentToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "email",
+            "type": "string"
+          },
+          {
+            "name": "wallet_address",
+            "type": "pubkey"
+          },
+          {
+            "name": "expiry_date",
+            "type": "i64"
+          },
+          {
+            "name": "is_renewed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "CONFIG_SEED",
+      "type": "string",
+      "value": "\"config\""
+    },
+    {
+      "name": "STUDENT_TOKEN_SEED",
+      "type": "string",
+      "value": "\"student_token\""
+    }
+  ]
+}
