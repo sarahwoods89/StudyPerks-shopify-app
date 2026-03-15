@@ -52,7 +52,7 @@ export default defineConfig({
     },
   },
   plugins: [
-    nodePolyfills({ include: ["buffer", "process"] }),
+    nodePolyfills({ include: ["buffer", "process"], globals: { process: false } }),
     remix({
       ignoredRouteFiles: ["**/.*"],
       future: {
