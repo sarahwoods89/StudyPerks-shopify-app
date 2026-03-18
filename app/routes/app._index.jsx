@@ -12,7 +12,7 @@ import {
   Badge,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import { useFetcher, useLoaderData } from "@remix-run/react";
+import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
@@ -90,17 +90,16 @@ const purple = "#5B21B6";
 const purpleLight = "#EDE9FE";
 
 export default function Index() {
-  const { totalOrders, totalRevenue } = useLoaderData();
-  const fetcher = useFetcher();
+  const { totalOrders, totalRevenue, config } = useLoaderData();
+  const navigation = useNavigation();
+  const actionData = useActionData();
 
-  const [discountName, setDiscountName] = useState("Student Discount");
-  const [discountType, setDiscountType] = useState("percentage");
-  const [discountValue, setDiscountValue] = useState("10");
+  const [discountName, setDiscountName] = useState(config?.discountName ?? "Student Discount");
+  const [discountType, setDiscountType] = useState(config?.discountType ?? "percentage");
+  const [discountValue, setDiscountValue] = useState(String(config?.discountValue ?? "10"));
 
-  const isSaving = fetcher.state !== "idle";
-  const saveResult = fetcher.data;
-  const { config } = useLoaderData();
-  const isActive = saveResult?.success ?? !!config;
+  const isSaving = navigation.state !== "idle";
+  const isActive = actionData?.success ?? !!config;
 
   return (
     <Page>
@@ -186,76 +185,78 @@ export default function Index() {
               StudyPerks token connects their wallet on your storefront.
             </Text>
 
-            {saveResult?.success ? (
+            {actionData?.success ? (
               <Banner tone="success" title="Discount activated!">
                 Students with a verified StudyPerks token will now receive this
                 discount automatically.
               </Banner>
             ) : null}
 
-            {saveResult?.error ? (
+            {actionData?.error ? (
               <Banner tone="critical" title="Could not create discount">
-                {saveResult.error}
+                {actionData.error}
               </Banner>
             ) : null}
 
-            <TextField
-              label="Discount name"
-              helpText="Shown in your Shopify Discounts list"
-              value={discountName}
-              onChange={setDiscountName}
-              placeholder="e.g. Student Discount"
-              autoComplete="off"
-            />
+            <Form method="post">
+              <BlockStack gap="400">
+                <TextField
+                  label="Discount name"
+                  helpText="Shown in your Shopify Discounts list"
+                  name="name"
+                  value={discountName}
+                  onChange={setDiscountName}
+                  placeholder="e.g. Student Discount"
+                  autoComplete="off"
+                />
 
-            <Select
-              label="Discount type"
-              options={[
-                { label: "Percentage off", value: "percentage" },
-                { label: "Fixed amount off", value: "fixed" },
-              ]}
-              value={discountType}
-              onChange={setDiscountType}
-            />
+                <Select
+                  label="Discount type"
+                  options={[
+                    { label: "Percentage off", value: "percentage" },
+                    { label: "Fixed amount off", value: "fixed" },
+                  ]}
+                  name="type"
+                  value={discountType}
+                  onChange={setDiscountType}
+                />
 
-            <TextField
-              label={
-                discountType === "percentage"
-                  ? "Percentage (e.g. 10 = 10% off)"
-                  : "Amount off (e.g. 5 = $5 off)"
-              }
-              type="number"
-              value={discountValue}
-              onChange={setDiscountValue}
-              autoComplete="off"
-            />
+                <TextField
+                  label={
+                    discountType === "percentage"
+                      ? "Percentage (e.g. 10 = 10% off)"
+                      : "Amount off (e.g. 5 = $5 off)"
+                  }
+                  type="number"
+                  name="value"
+                  value={discountValue}
+                  onChange={setDiscountValue}
+                  autoComplete="off"
+                />
 
-            <Text as="p" tone="subdued" variant="bodySm">
-              Applies to: all products
-            </Text>
+                <Text as="p" tone="subdued" variant="bodySm">
+                  Applies to: all products
+                </Text>
 
-            <button
-              onClick={() =>
-                fetcher.submit(
-                  { name: discountName, type: discountType, value: discountValue },
-                  { method: "post" }
-                )
-              }
-              disabled={isSaving}
-              style={{
-                background: purple,
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                padding: "10px 20px",
-                cursor: isSaving ? "not-allowed" : "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                opacity: isSaving ? 0.7 : 1,
-              }}
-            >
-              {isSaving ? "Saving..." : "Save & Activate Discount"}
-            </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  style={{
+                    background: purple,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "10px 20px",
+                    cursor: isSaving ? "not-allowed" : "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    opacity: isSaving ? 0.7 : 1,
+                  }}
+                >
+                  {isSaving ? "Saving..." : "Save & Activate Discount"}
+                </button>
+              </BlockStack>
+            </Form>
           </BlockStack>
         </Card>
 
