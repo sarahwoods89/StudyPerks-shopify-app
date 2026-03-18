@@ -32,6 +32,7 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
+  try {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const body = await request.json();
@@ -77,6 +78,10 @@ export const action = async ({ request }) => {
   }
 
   return json({ success: true });
+  } catch (err) {
+    console.error("Action error:", err);
+    return json({ success: false, error: err?.message ?? String(err) });
+  }
 };
 
 const purple = "#5B21B6";
