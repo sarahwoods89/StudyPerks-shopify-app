@@ -35,8 +35,10 @@ export const action = async ({ request }) => {
   try {
   const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
-  const body = await request.json();
-  const { name, type, value } = body;
+  const body = await request.formData();
+  const name = body.get("name");
+  const type = body.get("type");
+  const value = body.get("value");
 
   await db.discountConfig.upsert({
     where: { shop },
@@ -236,7 +238,7 @@ export default function Index() {
               onClick={() =>
                 fetcher.submit(
                   { name: discountName, type: discountType, value: discountValue },
-                  { method: "post", encType: "application/json" }
+                  { method: "post" }
                 )
               }
               disabled={isSaving}
