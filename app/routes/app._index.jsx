@@ -18,62 +18,30 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export const loader = async ({ request }) => {
-  const { admin, session } = await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
 
-  const response = await admin.graphql(`
-    query {
-      shop {
-        metafield(namespace: "studyperks", key: "discount") {
-          value
-        }
-      }
-    }
-  `);
+  const [config, totalOrders, transactions] = await Promise.all([
+    db.discountConfig.findUnique({ where: { shop } }),
+    db.affiliateTransaction.count({ where: { shop } }),
+    db.affiliateTransaction.findMany({ where: { shop } }),
+  ]);
 
-  const data = await response.json();
-  const saved = data.data.shop.metafield
-    ? JSON.parse(data.data.shop.metafield.value)
-    : null;
-
-  const totalOrders = await db.affiliateTransaction.count({
-    where: { shop: session.shop },
-  });
-  const transactions = await db.affiliateTransaction.findMany({
-    where: { shop: session.shop },
-  });
   const totalRevenue = transactions.reduce((sum, t) => sum + t.orderTotal, 0);
-
-  return json({ saved, totalOrders, totalRevenue });
+  return json({ config, totalOrders, totalRevenue });
 };
 
 export const action = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
   const body = await request.json();
   const { name, type, value } = body;
 
-  const shopRes = await admin.graphql(`query { shop { id } }`);
-  const shopData = await shopRes.json();
-  const shopId = shopData.data.shop.id;
-
-  await admin.graphql(
-    `mutation Save($value: String!, $ownerId: ID!) {
-      metafieldsSet(metafields: [{
-        namespace: "studyperks",
-        key: "discount",
-        type: "json",
-        value: $value,
-        ownerId: $ownerId
-      }]) {
-        userErrors { message }
-      }
-    }`,
-    {
-      variables: {
-        value: JSON.stringify({ name, type, value: Number(value) }),
-        ownerId: shopId,
-      },
-    }
-  );
+  await db.discountConfig.upsert({
+    where: { shop },
+    update: { discountName: name, discountType: type, discountValue: Number(value) },
+    create: { shop, discountName: name, discountType: type, discountValue: Number(value) },
+  });
 
   const discountValue =
     type === "percentage"
@@ -124,7 +92,8 @@ export default function Index() {
 
   const isSaving = fetcher.state !== "idle";
   const saveResult = fetcher.data;
-  const isActive = saveResult?.success;
+  const { config } = useLoaderData();
+  const isActive = saveResult?.success ?? !!config;
 
   return (
     <Page>
