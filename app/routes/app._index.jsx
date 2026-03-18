@@ -2,22 +2,23 @@ import { useState } from "react";
 import {
   Card,
   Page,
-  Button,
   Text,
   Banner,
   BlockStack,
   InlineStack,
+  InlineGrid,
   Select,
   TextField,
   Badge,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
-import { useFetcher } from "@remix-run/react";
+import { useFetcher, useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
+import db from "../db.server";
 
 export const loader = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
 
   const response = await admin.graphql(`
     query {
@@ -34,7 +35,15 @@ export const loader = async ({ request }) => {
     ? JSON.parse(data.data.shop.metafield.value)
     : null;
 
-  return json({ saved });
+  const totalOrders = await db.affiliateTransaction.count({
+    where: { shop: session.shop },
+  });
+  const transactions = await db.affiliateTransaction.findMany({
+    where: { shop: session.shop },
+  });
+  const totalRevenue = transactions.reduce((sum, t) => sum + t.orderTotal, 0);
+
+  return json({ saved, totalOrders, totalRevenue });
 };
 
 export const action = async ({ request }) => {
@@ -106,6 +115,7 @@ const purple = "#5B21B6";
 const purpleLight = "#EDE9FE";
 
 export default function Index() {
+  const { totalOrders, totalRevenue } = useLoaderData();
   const fetcher = useFetcher();
 
   const [discountName, setDiscountName] = useState("Student Discount");
@@ -135,6 +145,24 @@ export default function Index() {
             </Text>
           </div>
         </div>
+
+        {/* Stats */}
+        <InlineGrid columns={2} gap="400">
+          <Card>
+            <BlockStack gap="200">
+              <Text variant="headingMd" as="h2">Student Orders</Text>
+              <Text variant="heading2xl" as="p">{totalOrders}</Text>
+              <Text as="p" tone="subdued" variant="bodySm">Verified student purchases</Text>
+            </BlockStack>
+          </Card>
+          <Card>
+            <BlockStack gap="200">
+              <Text variant="headingMd" as="h2">Revenue Driven</Text>
+              <Text variant="heading2xl" as="p">£{totalRevenue.toFixed(2)}</Text>
+              <Text as="p" tone="subdued" variant="bodySm">From student discount orders</Text>
+            </BlockStack>
+          </Card>
+        </InlineGrid>
 
         {/* How it works */}
         <Card>

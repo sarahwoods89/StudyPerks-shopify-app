@@ -11,9 +11,13 @@ automatically_update_urls_on_dev = true
 [webhooks]
 api_version = "2026-01"
 
+[[webhooks.subscriptions]]
+topics = [ "orders/paid" ]
+uri = "/webhooks/orders/paid"
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_checkouts,read_customers,read_discounts,read_products,read_themes,write_checkouts,write_customers,write_discounts,write_products"
+scopes = "read_discounts,write_discounts,read_orders,read_products"
 
 [auth]
 redirect_urls = [ "https://studyperks-shopify-app-production.up.railway.app/auth/callback" ]

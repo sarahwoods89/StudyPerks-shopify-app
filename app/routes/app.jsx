@@ -11,8 +11,9 @@ export default function App() {
       <PolarisAppProvider i18n={enTranslations}>
         <NavMenu>
           <Link to="/app" rel="home">
-            Token Checker
+            Dashboard
           </Link>
+          <Link to="/app/analytics">Analytics</Link>
           <Link to="/app/settings">Settings</Link>
         </NavMenu>
         <Outlet />
