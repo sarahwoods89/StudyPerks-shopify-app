@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("studyperks-wallet-connect");
   const tooltip = document.getElementById("studyperks-tooltip");
+  const switchBtn = document.getElementById("studyperks-switch");
   if (!btn) return;
 
   function setAppliedState() {
@@ -9,10 +10,56 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tooltip) tooltip.classList.add("studyperks-tooltip--hidden");
   }
 
-  // Restore applied state instantly if already verified
+  function resetState() {
+    localStorage.removeItem("studyperks_applied");
+    localStorage.removeItem("studyperks_wallet");
+    btn.classList.remove("studyperks-badge--applied");
+    btn.disabled = false;
+    if (tooltip) {
+      tooltip.classList.remove("studyperks-tooltip--hidden");
+      tooltip.textContent = "Connect your Phantom wallet to claim your student discount";
+    }
+  }
+
+  // On page load: restore connected state from localStorage
   if (localStorage.getItem("studyperks_applied") === "true") {
-    setAppliedState();
-    return;
+    const savedWallet = localStorage.getItem("studyperks_wallet");
+
+    if (window.solana && savedWallet) {
+      // Try silent reconnect to verify the same wallet is still connected
+      window.solana.connect({ onlyIfTrusted: true })
+        .then((resp) => {
+          if (resp.publicKey.toString() === savedWallet) {
+            setAppliedState();
+          } else {
+            resetState();
+          }
+        })
+        .catch(() => {
+          // Phantom can't silently reconnect — discount was already applied so keep state
+          setAppliedState();
+        });
+    } else {
+      setAppliedState();
+    }
+  }
+
+  // Reset when user disconnects the site in Phantom
+  if (window.solana) {
+    window.solana.on("disconnect", () => {
+      resetState();
+    });
+
+    // Reset when user switches to a different account
+    window.solana.on("accountChanged", () => {
+      resetState();
+    });
+  }
+
+  if (switchBtn) {
+    switchBtn.addEventListener("click", () => {
+      resetState();
+    });
   }
 
   btn.addEventListener("click", async () => {
@@ -40,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (data.eligible) {
         localStorage.setItem("studyperks_applied", "true");
+        localStorage.setItem("studyperks_wallet", walletAddress);
         setAppliedState();
         window.location.href = `/discount/STUDYPERKS?redirect=${encodeURIComponent(window.location.pathname)}`;
       } else {

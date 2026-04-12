@@ -9,6 +9,8 @@
       src="{{ 'StudyPerksLogo.png' | asset_url }}"
       alt="StudyPerks"
       class="studyperks-badge__logo"
+      width="32"
+      height="32"
     />
     <span class="studyperks-badge__tick" id="studyperks-tick" aria-hidden="true">✓</span>
   </button>
@@ -16,9 +18,13 @@
   <div class="studyperks-tooltip" id="studyperks-tooltip">
     Connect your Phantom wallet to claim your student discount
   </div>
+
+  <button type="button" class="studyperks-switch" id="studyperks-switch">
+    Switch wallet
+  </button>
 </div>
 
-{{ 'connect-wallet.js' | asset_url | script_tag }}
+<script src="{{ 'connect-wallet.js' | asset_url }}" defer></script>
 {{ 'studyperks.css' | asset_url | stylesheet_tag }}
 
 {% schema %}

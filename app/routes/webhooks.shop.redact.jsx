@@ -4,10 +4,14 @@ import db from "../db.server";
 export const action = async ({ request }) => {
   const { shop } = await authenticate.webhook(request);
 
-  // Delete all affiliate transaction records for this shop
-  await db.affiliateTransaction.deleteMany({ where: { shop } });
+  // Delete all data associated with this shop
+  await Promise.all([
+    db.affiliateTransaction.deleteMany({ where: { shop } }),
+    db.discountConfig.deleteMany({ where: { shop } }),
+    db.session.deleteMany({ where: { shop } }),
+  ]);
 
-  console.log(`shop/redact received — deleted all transaction records for ${shop}`);
+  console.log(`shop/redact received — deleted all data for ${shop}`);
 
   return new Response();
 };

@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "de2a92a9507209a8b9dd3a24bd215d44"
-name = "studyperks-app"
+client_id = "54edb70aa006e3a59b83fc154b832133"
+name = "StudyPerks"
 application_url = "https://studyperks-shopify-app-production.up.railway.app"
 embedded = true
 
@@ -11,25 +11,18 @@ automatically_update_urls_on_dev = true
 [webhooks]
 api_version = "2026-01"
 
-[[webhooks.subscriptions]]
-topics = [ "orders/paid" ]
-uri = "/webhooks/orders/paid"
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
 
-[[webhooks.subscriptions]]
-topics = [ "customers/data_request" ]
-uri = "/webhooks/customers/data_request"
-
-[[webhooks.subscriptions]]
-topics = [ "customers/redact" ]
-uri = "/webhooks/customers/redact"
-
-[[webhooks.subscriptions]]
-topics = [ "shop/redact" ]
-uri = "/webhooks/shop/redact"
+  [[webhooks.subscriptions]]
+  topics = [ "orders/paid" ]
+  uri = "/webhooks/orders/paid"
 
 [access_scopes]
-# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_discounts,write_discounts,read_orders,read_products"
 
 [auth]
-redirect_urls = [ "https://studyperks-shopify-app-production.up.railway.app/auth/callback" ]
+redirect_urls = [
+  "https://studyperks-shopify-app-production.up.railway.app/auth/callback"
+]

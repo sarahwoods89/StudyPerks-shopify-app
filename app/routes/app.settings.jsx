@@ -1,199 +1,220 @@
-import { json } from "@remix-run/node";
-import { useLoaderData, useFetcher, useNavigate } from "@remix-run/react";
+import { useState } from "react";
 import {
   Page,
   Card,
   Select,
   TextField,
-  Button,
-  Banner,
   BlockStack,
-  InlineStack,
   Text,
+  Banner,
+  InlineStack,
+  Button,
 } from "@shopify/polaris";
 import { TitleBar } from "@shopify/app-bridge-react";
+import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/react";
+import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
-import { useState } from "react";
+import db from "../db.server";
 
-export async function loader({ request }) {
-  const { admin } = await authenticate.admin(request);
+export const loader = async ({ request }) => {
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const config = await db.discountConfig.findUnique({ where: { shop } });
+  return json({ config });
+};
 
-  const response = await admin.graphql(`
-    query {
-      shop {
-        metafield(namespace: "studyperks", key: "discount") {
-          value
+export const action = async ({ request }) => {
+  try {
+    const { admin, session } = await authenticate.admin(request);
+    const shop = session.shop;
+    const body = await request.formData();
+    const name = body.get("name");
+    const type = body.get("type");
+    const value = body.get("value");
+    const scope = body.get("scope");
+
+    await db.discountConfig.upsert({
+      where: { shop },
+      update: { discountName: name, discountType: type, discountValue: Number(value) },
+      create: { shop, discountName: name, discountType: type, discountValue: Number(value) },
+    });
+
+    const discountValue =
+      type === "percentage"
+        ? `{ percentage: ${Number(value) / 100} }`
+        : `{ discountAmount: { amount: "${value}", appliesOnEachItem: false } }`;
+
+    const items = scope === "all" ? `items: { all: true }` : `items: { all: true }`;
+
+    const discountRes = await admin.graphql(`
+      mutation {
+        discountCodeBasicCreate(basicCodeDiscount: {
+          title: "${name}",
+          code: "STUDYPERKS",
+          startsAt: "${new Date().toISOString()}",
+          customerSelection: { all: true },
+          customerGets: {
+            value: ${discountValue},
+            ${items}
+          }
+        }) {
+          codeDiscountNode { id }
+          userErrors { field message }
         }
       }
-    }
-  `);
+    `);
 
-  const data = await response.json();
-  const saved = data.data.shop.metafield
-    ? JSON.parse(data.data.shop.metafield.value)
-    : { name: "Student Discount", type: "percentage", value: 10 };
+    const discountData = await discountRes.json();
+    const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
+    const isUniqueError = errors.some((e) => e.message.toLowerCase().includes("must be unique"));
 
-  return json({ saved });
-}
+    if (isUniqueError) {
+      const lookupRes = await admin.graphql(`
+        { codeDiscountNodeByCode(code: "STUDYPERKS") { id } }
+      `);
+      const lookupData = await lookupRes.json();
+      const existingId = lookupData?.data?.codeDiscountNodeByCode?.id;
 
-export async function action({ request }) {
-  const { admin } = await authenticate.admin(request);
-  const body = await request.json();
-  const { name, type, value } = body;
-
-  // Get shop GID
-  const shopRes = await admin.graphql(`query { shop { id } }`);
-  const shopData = await shopRes.json();
-  const shopId = shopData.data.shop.id;
-
-  // Save config to metafield
-  await admin.graphql(
-    `mutation Save($value: String!, $ownerId: ID!) {
-      metafieldsSet(metafields: [{
-        namespace: "studyperks",
-        key: "discount",
-        type: "json",
-        value: $value,
-        ownerId: $ownerId
-      }]) {
-        userErrors { message }
-      }
-    }`,
-    {
-      variables: {
-        value: JSON.stringify({ name, type, value: Number(value) }),
-        ownerId: shopId,
-      },
-    }
-  );
-
-  // Create/update discount code in Shopify
-  const discountValue =
-    type === "percentage"
-      ? `{ percentage: ${Number(value) / 100} }`
-      : `{ discountAmount: { amount: "${value}", appliesOnEachItem: false } }`;
-
-  const discountRes = await admin.graphql(`
-    mutation {
-      discountCodeBasicCreate(basicCodeDiscount: {
-        title: "${name}",
-        code: "STUDYPERKS",
-        startsAt: "${new Date().toISOString()}",
-        customerSelection: { all: true },
-        customerGets: {
-          value: ${discountValue},
-          items: { all: true }
+      if (existingId) {
+        const updateRes = await admin.graphql(`
+          mutation {
+            discountCodeBasicUpdate(id: "${existingId}", basicCodeDiscount: {
+              title: "${name}",
+              customerGets: {
+                value: ${discountValue},
+                ${items}
+              }
+            }) {
+              codeDiscountNode { id }
+              userErrors { field message }
+            }
+          }
+        `);
+        const updateData = await updateRes.json();
+        const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
+        if (updateErrors.length > 0) {
+          return json({ success: false, error: updateErrors[0].message });
         }
-      }) {
-        codeDiscountNode { id }
-        userErrors { field message }
       }
+      return json({ success: true });
     }
-  `);
 
-  const discountData = await discountRes.json();
-  const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
-  const realErrors = errors.filter(
-    (e) => !e.message.toLowerCase().includes("already been used")
-  );
+    const realErrors = errors.filter(
+      (e) => !e.message.toLowerCase().includes("already been used")
+    );
+    if (realErrors.length > 0) {
+      return json({ success: false, error: realErrors[0].message });
+    }
 
-  if (realErrors.length > 0) {
-    return json({ success: false, error: realErrors[0].message });
+    return json({ success: true });
+  } catch (err) {
+    console.error("Settings action error:", err);
+    return json({ success: false, error: err?.message ?? String(err) });
   }
-
-  return json({ success: true });
-}
+};
 
 export default function Settings() {
-  const { saved } = useLoaderData();
-  const fetcher = useFetcher();
-  const navigate = useNavigate();
+  const { config } = useLoaderData();
+  const navigation = useNavigation();
+  const actionData = useActionData();
 
-  const [name, setName] = useState(saved.name ?? "Student Discount");
-  const [type, setType] = useState(saved.type ?? "percentage");
-  const [value, setValue] = useState(String(saved.value ?? 10));
+  const [name, setName] = useState(config?.discountName ?? "Student Discount");
+  const [type, setType] = useState(config?.discountType ?? "percentage");
+  const [value, setValue] = useState(String(config?.discountValue ?? "10"));
+  const [scope, setScope] = useState("all");
 
-  const isLoading = fetcher.state !== "idle";
-  const result = fetcher.data;
+  const isSaving = navigation.state !== "idle";
 
   return (
     <Page>
-      <TitleBar title="Discount Settings">
-        <button onClick={() => navigate("/app")}>Back</button>
-      </TitleBar>
+      <TitleBar title="Settings" />
+      <BlockStack gap="500">
 
-      <Card>
-        <BlockStack gap="400">
-          {result?.success && (
-            <Banner tone="success" title="Saved!">
-              Your discount is live. Students with a StudyPerks token will receive it automatically.
-            </Banner>
-          )}
-          {result?.error && (
-            <Banner tone="critical" title="Could not create discount code">
-              {result.error}
-            </Banner>
-          )}
+        {actionData?.success && (
+          <Banner tone="success" title="Discount saved and activated">
+            Verified students will now receive this discount automatically at checkout.
+          </Banner>
+        )}
+        {actionData?.error && (
+          <Banner tone="critical" title="Could not save discount">
+            {actionData.error}
+          </Banner>
+        )}
 
-          <Text variant="headingMd" as="h2">
-            Configure Your Student Discount
-          </Text>
+        <Card>
+          <Form method="post">
+            <BlockStack gap="400">
+              <Text variant="headingMd" as="h2">Student Discount</Text>
+              <Text as="p" variant="bodyMd">
+                This discount is applied automatically when a verified student connects their StudyPerks account on your storefront.
+              </Text>
 
-          <Text as="p" tone="subdued" variant="bodyMd">
-            This discount will be automatically applied when a customer connects
-            a verified StudyPerks wallet at checkout.
-          </Text>
+              <TextField
+                label="Discount name"
+                helpText="Shown in your Shopify Discounts list"
+                name="name"
+                value={name}
+                onChange={setName}
+                placeholder="e.g. Student Discount"
+                autoComplete="off"
+              />
 
-          <TextField
-            label="Discount name (shown in your Shopify Discounts list)"
-            value={name}
-            onChange={setName}
-            placeholder="e.g. Student Discount"
-            autoComplete="off"
-          />
+              <Select
+                label="Discount type"
+                name="type"
+                options={[
+                  { label: "Percentage off", value: "percentage" },
+                  { label: "Fixed amount off", value: "fixed" },
+                ]}
+                value={type}
+                onChange={setType}
+              />
 
-          <Select
-            label="Discount type"
-            options={[
-              { label: "Percentage off", value: "percentage" },
-              { label: "Fixed amount off", value: "fixed" },
-            ]}
-            value={type}
-            onChange={setType}
-          />
+              <TextField
+                label={type === "percentage" ? "Percentage (e.g. 10 = 10% off)" : "Amount off (e.g. 5 = £5 off)"}
+                type="number"
+                name="value"
+                value={value}
+                onChange={setValue}
+                autoComplete="off"
+              />
 
-          <TextField
-            label={
-              type === "percentage"
-                ? "Percentage (e.g. 10 = 10% off)"
-                : "Amount off (e.g. 5 = $5 off)"
-            }
-            type="number"
-            value={value}
-            onChange={setValue}
-            autoComplete="off"
-          />
+              <Select
+                label="Applies to"
+                name="scope"
+                options={[
+                  { label: "All products", value: "all" },
+                ]}
+                value={scope}
+                onChange={setScope}
+                helpText="Discount applies to all products in your store."
+              />
 
-          <Text as="p" tone="subdued" variant="bodyMd">
-            Applies to: all products
-          </Text>
+              <input type="hidden" name="scope" value={scope} />
 
-          <InlineStack>
-            <Button
-              primary
-              loading={isLoading}
-              onClick={() =>
-                fetcher.submit(
-                  { name, type, value },
-                  { method: "post", encType: "application/json" }
-                )
-              }
-            >
-              Save &amp; Activate Discount
-            </Button>
-          </InlineStack>
-        </BlockStack>
-      </Card>
+              <InlineStack>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  style={{
+                    background: isSaving ? "#9CA3AF" : "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
+                    color: "#000",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "12px 24px",
+                    cursor: isSaving ? "not-allowed" : "pointer",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                  }}
+                >
+                  {isSaving ? "Saving..." : "Save & Activate Discount"}
+                </button>
+              </InlineStack>
+            </BlockStack>
+          </Form>
+        </Card>
+
+      </BlockStack>
     </Page>
   );
 }
