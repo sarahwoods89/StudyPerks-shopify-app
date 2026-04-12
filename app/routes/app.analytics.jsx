@@ -14,7 +14,7 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const shop = session.shop;
 
   const transactions = await db.affiliateTransaction.findMany({
@@ -25,7 +25,15 @@ export const loader = async ({ request }) => {
 
   const totalOrders = transactions.length;
   const totalRevenue = transactions.reduce((sum, t) => sum + t.orderTotal, 0);
-  const currency = "GBP";
+
+  let currency = "GBP";
+  try {
+    const currencyRes = await admin.graphql(`{ shop { currencyCode } }`);
+    const currencyData = await currencyRes.json();
+    currency = currencyData?.data?.shop?.currencyCode ?? "GBP";
+  } catch (_) {
+    // fall back to GBP if GraphQL fails
+  }
 
   return json({ transactions, totalOrders, totalRevenue, currency });
 };
