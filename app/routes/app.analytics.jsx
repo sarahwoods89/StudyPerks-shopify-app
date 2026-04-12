@@ -26,13 +26,13 @@ export const loader = async ({ request }) => {
   const totalOrders = transactions.length;
   const totalRevenue = transactions.reduce((sum, t) => sum + t.orderTotal, 0);
 
-  let currency = "GBP";
+  let currency = "USD";
   try {
     const currencyRes = await admin.graphql(`{ shop { currencyCode } }`);
     const currencyData = await currencyRes.json();
-    currency = currencyData?.data?.shop?.currencyCode ?? "GBP";
+    currency = currencyData?.data?.shop?.currencyCode ?? "USD";
   } catch (_) {
-    // fall back to GBP if GraphQL fails
+    // fall back to USD if GraphQL fails
   }
 
   return json({ transactions, totalOrders, totalRevenue, currency });
