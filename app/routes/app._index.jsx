@@ -57,7 +57,7 @@ export default function Index() {
           gap: "22px",
         }}>
           <img
-            src="/StudyPerksLogo.png"
+            src="/StudyPerksLogo.png?v=2"
             alt="StudyPerks"
             style={{ width: "80px", height: "80px", borderRadius: "16px", flexShrink: 0, display: "block" }}
           />
