@@ -24,28 +24,25 @@ export const loader = async ({ request }) => {
 };
 
 export const action = async ({ request }) => {
+  const { admin, session } = await authenticate.admin(request);
+  const shop = session.shop;
+  const body = await request.formData();
+  const name = body.get("name");
+  const type = body.get("type");
+  const value = body.get("value");
+
+  await db.discountConfig.upsert({
+    where: { shop },
+    update: { discountName: name, discountType: type, discountValue: Number(value) },
+    create: { shop, discountName: name, discountType: type, discountValue: Number(value) },
+  });
+
+  const discountValue =
+    type === "percentage"
+      ? `{ percentage: ${Number(value) / 100} }`
+      : `{ discountAmount: { amount: "${value}", appliesOnEachItem: false } }`;
+
   try {
-    const { admin, session } = await authenticate.admin(request);
-    const shop = session.shop;
-    const body = await request.formData();
-    const name = body.get("name");
-    const type = body.get("type");
-    const value = body.get("value");
-    const scope = body.get("scope");
-
-    await db.discountConfig.upsert({
-      where: { shop },
-      update: { discountName: name, discountType: type, discountValue: Number(value) },
-      create: { shop, discountName: name, discountType: type, discountValue: Number(value) },
-    });
-
-    const discountValue =
-      type === "percentage"
-        ? `{ percentage: ${Number(value) / 100} }`
-        : `{ discountAmount: { amount: "${value}", appliesOnEachItem: false } }`;
-
-    const items = scope === "all" ? `items: { all: true }` : `items: { all: true }`;
-
     const discountRes = await admin.graphql(`
       mutation {
         discountCodeBasicCreate(basicCodeDiscount: {
@@ -55,7 +52,7 @@ export const action = async ({ request }) => {
           customerSelection: { all: true },
           customerGets: {
             value: ${discountValue},
-            ${items}
+            items: { all: true }
           }
         }) {
           codeDiscountNode { id }
@@ -82,7 +79,7 @@ export const action = async ({ request }) => {
               title: "${name}",
               customerGets: {
                 value: ${discountValue},
-                ${items}
+                items: { all: true }
               }
             }) {
               codeDiscountNode { id }
@@ -93,25 +90,15 @@ export const action = async ({ request }) => {
         const updateData = await updateRes.json();
         const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
         if (updateErrors.length > 0) {
-          return json({ success: false, error: updateErrors[0].message });
+          console.error("Discount update error:", updateErrors[0].message);
         }
       }
-      return json({ success: true });
     }
-
-    const realErrors = errors.filter(
-      (e) => !e.message.toLowerCase().includes("already been used")
-    );
-    if (realErrors.length > 0) {
-      return json({ success: false, error: realErrors[0].message });
-    }
-
-    return json({ success: true });
   } catch (err) {
-    if (err instanceof Response && err.status < 400) throw err;
-    console.error("Settings action error:", err);
-    return json({ success: false, error: err?.message ?? String(err) });
+    console.error("Shopify discount sync error (config saved):", err);
   }
+
+  return json({ success: true });
 };
 
 export default function Settings() {
