@@ -24,6 +24,16 @@
   </button>
 </div>
 
+<script>
+  (function () {
+    if (localStorage.getItem('studyperks_applied') === 'true') {
+      var btn = document.getElementById('studyperks-wallet-connect');
+      var tip = document.getElementById('studyperks-tooltip');
+      if (btn) { btn.classList.add('studyperks-badge--applied'); btn.disabled = true; }
+      if (tip) tip.classList.add('studyperks-tooltip--hidden');
+    }
+  })();
+</script>
 <script src="{{ 'connect-wallet.js' | asset_url }}" defer></script>
 {{ 'studyperks.css' | asset_url | stylesheet_tag }}
 

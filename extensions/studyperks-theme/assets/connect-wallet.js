@@ -88,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (data.eligible) {
         localStorage.setItem("studyperks_applied", "true");
         localStorage.setItem("studyperks_wallet", walletAddress);
-        setAppliedState();
         window.location.href = `/discount/STUDYPERKS?redirect=${encodeURIComponent(window.location.pathname)}`;
       } else {
         if (tooltip) tooltip.textContent = "No StudyPerks token found";
