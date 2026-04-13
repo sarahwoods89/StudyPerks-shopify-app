@@ -108,6 +108,7 @@ export const action = async ({ request }) => {
 
     return json({ success: true });
   } catch (err) {
+    if (err instanceof Response) throw err;
     console.error("Settings action error:", err);
     return json({ success: false, error: err?.message ?? String(err) });
   }
