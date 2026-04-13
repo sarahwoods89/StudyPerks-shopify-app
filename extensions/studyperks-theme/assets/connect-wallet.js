@@ -23,25 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // On page load: restore connected state from localStorage
   if (localStorage.getItem("studyperks_applied") === "true") {
-    const savedWallet = localStorage.getItem("studyperks_wallet");
-
-    if (window.solana && savedWallet) {
-      // Try silent reconnect to verify the same wallet is still connected
-      window.solana.connect({ onlyIfTrusted: true })
-        .then((resp) => {
-          if (resp.publicKey.toString() === savedWallet) {
-            setAppliedState();
-          } else {
-            resetState();
-          }
-        })
-        .catch(() => {
-          // Phantom can't silently reconnect — discount was already applied so keep state
-          setAppliedState();
-        });
-    } else {
-      setAppliedState();
-    }
+    setAppliedState();
   }
 
   // Reset when user disconnects the site in Phantom
