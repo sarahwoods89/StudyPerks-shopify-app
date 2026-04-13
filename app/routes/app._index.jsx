@@ -32,7 +32,7 @@ export const loader = async ({ request }) => {
 const COLLECTION_MINT = "DM8CuRPtBtHVXhRkT563d1RNAE4H3EpmiKJTxzbdMzpC";
 const COLLECTION_NAME = "StudyPerks Student";
 const NETWORK = "Solana Devnet";
-const SOLSCAN_URL = `https://explorer.solana.com/address/${COLLECTION_MINT}/metadata?cluster=devnet`;
+const SOLSCAN_URL = `https://explorer.solana.com/address/${COLLECTION_MINT}?cluster=devnet`;
 
 const purple     = "#7C3AED";
 const purpleDark = "#5B21B6";
