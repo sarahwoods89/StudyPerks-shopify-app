@@ -29,6 +29,5 @@ scopes = "read_discounts,write_discounts,read_orders,read_products"
 
 [auth]
 redirect_urls = [
-  "https://app.studyperks.me/auth/callback",
-  "https://studyperks-shopify-app-production.up.railway.app/auth/callback"
+  "https://app.studyperks.me/auth/callback"
 ]
