@@ -12,7 +12,7 @@ const shopify = shopifyApp({
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: ApiVersion.January25,
   scopes: process.env.SCOPES?.split(",") ?? ["read_discounts", "write_discounts", "read_orders", "read_products"],
-  appUrl: process.env.SHOPIFY_APP_URL || "https://studyperks-shopify-app-production.up.railway.app",
+  appUrl: process.env.SHOPIFY_APP_URL || "https://app.studyperks.me",
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
