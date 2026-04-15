@@ -20,11 +20,6 @@ api_version = "2026-01"
   uri = "/webhooks/orders/paid"
 
 
-[privacy_compliance]
-customer_data_request_url = "/webhooks/customers/data_request"
-customer_deletion_url = "/webhooks/customers/redact"
-shop_deletion_url = "/webhooks/shop/redact"
-
 [access_scopes]
 scopes = "read_discounts,write_discounts,read_orders,read_products"
 
