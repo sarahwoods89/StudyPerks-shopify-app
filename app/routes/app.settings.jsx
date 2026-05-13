@@ -118,9 +118,11 @@ export const action = async ({ request }) => {
       return json({ error: `Could not create discount: ${errors[0].message}` }, { status: 400 });
     }
   } catch (err) {
-    // Re-throw Response objects — Shopify uses these for auth redirects
-    if (err instanceof Response) throw err;
     console.error("Shopify discount sync error:", err);
+    const status = err instanceof Response ? err.status : null;
+    if (status === 403) {
+      return json({ error: "Permission denied (403). The app needs to be reinstalled on this store to grant discount permissions. Please uninstall and reinstall StudyPerks from the Shopify App Store." }, { status: 400 });
+    }
     return json({ error: `Unexpected error: ${err?.message || String(err)}` }, { status: 500 });
   }
 
