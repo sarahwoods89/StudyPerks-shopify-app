@@ -37,29 +37,31 @@ export const action = async ({ request }) => {
     create: { shop, discountName: name, discountType: type, discountValue: Number(value) },
   });
 
-  const discountValue =
-    type === "percentage"
-      ? `{ percentage: ${Number(value) / 100} }`
-      : `{ discountAmount: { amount: "${value}", appliesOnEachItem: false } }`;
+  const discountInput = {
+    title: name,
+    code: "STUDYPERKS",
+    startsAt: new Date().toISOString(),
+    customerSelection: { all: true },
+    customerGets: {
+      value:
+        type === "percentage"
+          ? { percentage: Number(value) / 100 }
+          : { discountAmount: { amount: String(value), appliesOnEachItem: false } },
+      items: { all: true },
+    },
+  };
 
   try {
-    const discountRes = await admin.graphql(`
-      mutation {
-        discountCodeBasicCreate(basicCodeDiscount: {
-          title: "${name}",
-          code: "STUDYPERKS",
-          startsAt: "${new Date().toISOString()}",
-          customerSelection: { all: true },
-          customerGets: {
-            value: ${discountValue},
-            items: { all: true }
-          }
-        }) {
+    const discountRes = await admin.graphql(
+      `#graphql
+      mutation CreateStudyPerksDiscount($discount: DiscountCodeBasicInput!) {
+        discountCodeBasicCreate(basicCodeDiscount: $discount) {
           codeDiscountNode { id }
           userErrors { field message }
         }
-      }
-    `);
+      }`,
+      { variables: { discount: discountInput } }
+    );
 
     const discountData = await discountRes.json();
     console.log("discountCodeBasicCreate response:", JSON.stringify(discountData));
@@ -73,28 +75,35 @@ export const action = async ({ request }) => {
     );
 
     if (isAlreadyExists) {
-      const lookupRes = await admin.graphql(`
-        { codeDiscountNodeByCode(code: "STUDYPERKS") { id } }
-      `);
+      const lookupRes = await admin.graphql(
+        `#graphql
+        query GetStudyPerksDiscount {
+          codeDiscountNodeByCode(code: "STUDYPERKS") { id }
+        }`
+      );
       const lookupData = await lookupRes.json();
       console.log("codeDiscountNodeByCode lookup:", JSON.stringify(lookupData));
       const existingId = lookupData?.data?.codeDiscountNodeByCode?.id;
 
       if (existingId) {
-        const updateRes = await admin.graphql(`
-          mutation {
-            discountCodeBasicUpdate(id: "${existingId}", basicCodeDiscount: {
-              title: "${name}",
-              customerGets: {
-                value: ${discountValue},
-                items: { all: true }
-              }
-            }) {
+        const updateRes = await admin.graphql(
+          `#graphql
+          mutation UpdateStudyPerksDiscount($id: ID!, $discount: DiscountCodeBasicInput!) {
+            discountCodeBasicUpdate(id: $id, basicCodeDiscount: $discount) {
               codeDiscountNode { id }
               userErrors { field message }
             }
+          }`,
+          {
+            variables: {
+              id: existingId,
+              discount: {
+                title: name,
+                customerGets: discountInput.customerGets,
+              },
+            },
           }
-        `);
+        );
         const updateData = await updateRes.json();
         console.log("discountCodeBasicUpdate response:", JSON.stringify(updateData));
         const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
@@ -102,15 +111,17 @@ export const action = async ({ request }) => {
           return json({ error: `Could not update discount: ${updateErrors[0].message}` }, { status: 400 });
         }
       } else {
-        return json({ error: "Discount code already exists but could not be found to update. Please check your Shopify Discounts." }, { status: 400 });
+        return json({ error: "Discount code already exists but could not be found to update." }, { status: 400 });
       }
     } else if (errors.length > 0) {
       console.error("discountCodeBasicCreate userErrors:", JSON.stringify(errors));
       return json({ error: `Could not create discount: ${errors[0].message}` }, { status: 400 });
     }
   } catch (err) {
+    // Re-throw Response objects — Shopify uses these for auth redirects
+    if (err instanceof Response) throw err;
     console.error("Shopify discount sync error:", err);
-    return json({ error: `Unexpected error: ${err.message}` }, { status: 500 });
+    return json({ error: `Unexpected error: ${err?.message || String(err)}` }, { status: 500 });
   }
 
   return json({ success: true });
