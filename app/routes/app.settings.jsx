@@ -62,14 +62,22 @@ export const action = async ({ request }) => {
     `);
 
     const discountData = await discountRes.json();
-    const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
-    const isUniqueError = errors.some((e) => e.message.toLowerCase().includes("must be unique"));
+    console.log("discountCodeBasicCreate response:", JSON.stringify(discountData));
 
-    if (isUniqueError) {
+    const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
+    const isAlreadyExists = errors.some(
+      (e) =>
+        e.message.toLowerCase().includes("must be unique") ||
+        e.message.toLowerCase().includes("already been taken") ||
+        e.message.toLowerCase().includes("already exists")
+    );
+
+    if (isAlreadyExists) {
       const lookupRes = await admin.graphql(`
         { codeDiscountNodeByCode(code: "STUDYPERKS") { id } }
       `);
       const lookupData = await lookupRes.json();
+      console.log("codeDiscountNodeByCode lookup:", JSON.stringify(lookupData));
       const existingId = lookupData?.data?.codeDiscountNodeByCode?.id;
 
       if (existingId) {
@@ -88,14 +96,21 @@ export const action = async ({ request }) => {
           }
         `);
         const updateData = await updateRes.json();
+        console.log("discountCodeBasicUpdate response:", JSON.stringify(updateData));
         const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
         if (updateErrors.length > 0) {
-          console.error("Discount update error:", updateErrors[0].message);
+          return json({ error: `Could not update discount: ${updateErrors[0].message}` }, { status: 400 });
         }
+      } else {
+        return json({ error: "Discount code already exists but could not be found to update. Please check your Shopify Discounts." }, { status: 400 });
       }
+    } else if (errors.length > 0) {
+      console.error("discountCodeBasicCreate userErrors:", JSON.stringify(errors));
+      return json({ error: `Could not create discount: ${errors[0].message}` }, { status: 400 });
     }
   } catch (err) {
-    console.error("Shopify discount sync error (config saved):", err);
+    console.error("Shopify discount sync error:", err);
+    return json({ error: `Unexpected error: ${err.message}` }, { status: 500 });
   }
 
   return json({ success: true });
