@@ -52,6 +52,14 @@ export const action = async ({ request }) => {
   };
 
   try {
+    const shopTestRes = await admin.graphql(`query { shop { name plan { displayName } } }`);
+    const shopTestData = await shopTestRes.json();
+    console.log("API access test (shop query):", JSON.stringify(shopTestData));
+  } catch (testErr) {
+    console.error("API access test FAILED:", testErr instanceof Response ? `status ${testErr.status} body: ${await testErr.text().catch(() => '?')}` : String(testErr));
+  }
+
+  try {
     const discountRes = await admin.graphql(
       `#graphql
       mutation CreateStudyPerksDiscount($discount: DiscountCodeBasicInput!) {
