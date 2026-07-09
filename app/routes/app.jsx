@@ -1,11 +1,11 @@
 import { AppProvider as ShopifyAppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
-import { Outlet, useLoaderData } from "@remix-run/react";
-import { Link } from "@remix-run/react";
+import { Outlet, useLoaderData, useRouteError, Link } from "@remix-run/react";
 import { AppProvider as PolarisAppProvider } from "@shopify/polaris";
 import enTranslations from "@shopify/polaris/locales/en.json";
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
+import { boundary } from "@shopify/shopify-app-remix/server";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -29,3 +29,11 @@ export default function App() {
     </ShopifyAppProvider>
   );
 }
+
+export function ErrorBoundary() {
+  return boundary.error(useRouteError());
+}
+
+export const headers = (headersArgs) => {
+  return boundary.headers(headersArgs);
+};
