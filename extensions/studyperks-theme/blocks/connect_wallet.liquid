@@ -1,39 +1,45 @@
 <div class="studyperks-wrapper">
+  <iframe
+    id="studyperks-session-bridge"
+    src="https://www.studyperks.me/session-bridge"
+    style="display:none"
+    width="0"
+    height="0"
+    title=""
+    aria-hidden="true"
+  ></iframe>
   <button
     id="studyperks-wallet-connect"
     class="studyperks-badge"
     type="button"
-    aria-label="StudyPerks — connect your wallet to claim your student discount"
+    aria-label="StudyPerks — connect to claim your student discount"
   >
     <img
       src="{{ 'StudyPerksLogo.png' | asset_url }}"
       alt="StudyPerks"
-      class="studyperks-badge__logo"
+      class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
       width="32"
       height="32"
     />
-    <span class="studyperks-badge__tick" id="studyperks-tick" aria-hidden="true">✓</span>
   </button>
 
-  <div class="studyperks-tooltip" id="studyperks-tooltip">
-    Connect your Phantom wallet to claim your student discount
+  <div class="studyperks-email-prompt" id="studyperks-email-prompt">
+    <input
+      type="email"
+      id="studyperks-email-input"
+      class="studyperks-email-input"
+      placeholder="your@student.email"
+      autocomplete="email"
+    />
+    <button type="button" id="studyperks-email-submit" class="studyperks-email-submit">&#8594;</button>
   </div>
 
-  <button type="button" class="studyperks-switch" id="studyperks-switch">
-    Switch wallet
-  </button>
+  <div class="studyperks-tooltip" id="studyperks-tooltip">
+    Student discount — click to claim
+  </div>
+
 </div>
 
-<script>
-  (function () {
-    if (localStorage.getItem('studyperks_applied') === 'true') {
-      var btn = document.getElementById('studyperks-wallet-connect');
-      var tip = document.getElementById('studyperks-tooltip');
-      if (btn) { btn.classList.add('studyperks-badge--applied'); btn.disabled = true; }
-      if (tip) tip.classList.add('studyperks-tooltip--hidden');
-    }
-  })();
-</script>
 <script src="{{ 'connect-wallet.js' | asset_url }}" defer></script>
 {{ 'studyperks.css' | asset_url | stylesheet_tag }}
 
@@ -41,6 +47,19 @@
 {
   "name": "StudyPerks Badge",
   "target": "section",
-  "settings": []
+  "settings": [
+    {
+      "type": "select",
+      "id": "logo_style",
+      "label": "Logo colour",
+      "options": [
+        { "value": "original", "label": "Original (gradient)" },
+        { "value": "greyscale", "label": "Greyscale" },
+        { "value": "black", "label": "Black" },
+        { "value": "white", "label": "White" }
+      ],
+      "default": "original"
+    }
+  ]
 }
 {% endschema %}
