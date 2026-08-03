@@ -1,11 +1,30 @@
 .studyperks-wrapper {
-  display: inline-block;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   position: relative;
   z-index: 100;
 }
 
+.studyperks-badge__title {
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: balance;
+  max-width: 260px;
+  color: inherit;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: transparent;
+}
+
 /* ── The badge button ── */
 .studyperks-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -30,6 +49,26 @@
   transform: translateY(0);
 }
 
+/* ── Compact variant — plain icon for placement next to bare nav icons (header) ── */
+.studyperks-badge--compact {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  box-shadow: none;
+}
+
+.studyperks-badge--compact:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  box-shadow: none;
+  transform: none;
+}
+
+.studyperks-badge--compact .studyperks-badge__logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+}
+
 /* ── Logo ── */
 .studyperks-badge__logo {
   width: 32px;
@@ -51,20 +90,41 @@
   filter: brightness(0) invert(1);
 }
 
-/* ── Applied state — green outline signals approval ── */
+/* ── Applied state — green signals approval ── */
 .studyperks-badge--applied {
-  border: 2.5px solid #16a34a;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12), 0 1px 4px rgba(22, 163, 74, 0.1);
   cursor: default;
 }
 
-/* ── Tooltip ── */
-.studyperks-tooltip {
+/* Full badge (product page etc.): green ring around the whole button */
+.studyperks-badge--applied:not(.studyperks-badge--compact) {
+  border-color: #16a34a;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12), 0 1px 4px rgba(22, 163, 74, 0.1);
+}
+
+/* Compact badge (header etc.): small corner dot instead of a colored box */
+.studyperks-badge__status-dot {
   display: none;
   position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  top: 0px;
+  right: 0px;
+  width: 9px;
+  height: 9px;
+  background: #16a34a;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+}
+
+.studyperks-badge--applied .studyperks-badge__status-dot {
+  display: block;
+}
+
+/* ── Tooltip ── */
+/* position: fixed + JS-computed coordinates, not absolute — many themes clip
+   absolutely-positioned overflow inside a sticky header, which cut this off. */
+.studyperks-tooltip {
+  display: none;
+  position: fixed;
   background: #1f1f1f;
   color: #fff;
   font-size: 12px;
@@ -73,7 +133,7 @@
   padding: 6px 10px;
   border-radius: 6px;
   pointer-events: none;
-  z-index: 999;
+  z-index: 9999;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
@@ -92,24 +152,44 @@
 
 
 /* ── Email prompt ── */
+/* position: fixed + JS-computed coordinates — see note on .studyperks-tooltip above. */
 .studyperks-email-prompt {
   display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  position: fixed;
   background: #fff;
   border: 1.5px solid #5B21B6;
   border-radius: 10px;
   padding: 8px 10px;
-  z-index: 999;
+  z-index: 9999;
   box-shadow: 0 2px 12px rgba(91, 33, 182, 0.15);
-  white-space: nowrap;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 6px;
+  max-width: 220px;
 }
 
 .studyperks-email-prompt--visible {
   display: flex;
+}
+
+.studyperks-email-prompt__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.studyperks-email-prompt__message {
+  display: none;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #4c1d95;
+  white-space: normal;
+}
+
+.studyperks-email-prompt__message--visible {
+  display: block;
 }
 
 .studyperks-email-prompt::before {
@@ -126,14 +206,49 @@
   display: none !important;
 }
 
+/* ── "You're verified" toast ── */
+.studyperks-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1f1f1f;
+  color: #fff;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 12px 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  max-width: min(90vw, 360px);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.studyperks-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.studyperks-toast__icon {
+  flex-shrink: 0;
+  color: #4ade80;
+  font-weight: 700;
+}
+
 .studyperks-email-input {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
-  padding: 5px 8px;
-  font-size: 12px;
+  padding: 6px 8px;
+  /* 16px minimum — iOS Safari auto-zooms the page on focus for any input below that */
+  font-size: 16px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   outline: none;
-  width: 155px;
+  width: 160px;
   color: #1f1f1f;
   background: #fff;
 }

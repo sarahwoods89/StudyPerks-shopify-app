@@ -4,12 +4,64 @@ document.addEventListener("DOMContentLoaded", () => {
   const emailPrompt = document.getElementById("studyperks-email-prompt");
   const emailInput = document.getElementById("studyperks-email-input");
   const emailSubmit = document.getElementById("studyperks-email-submit");
+  const emailMessage = document.getElementById("studyperks-email-message");
+  const toast = document.getElementById("studyperks-toast");
+  const wrapper = btn.closest(".studyperks-wrapper");
   if (!btn) return;
+
+  const defaultTooltipText = () =>
+    (tooltip && tooltip.dataset.defaultText) || "Student discount — click to claim";
+
+  // Claims a fresh, single-use discount code for this shop instead of using
+  // a shared guessable word — see 2026-08-03 security fix. Returns null on
+  // any failure so callers can show an error rather than silently falling
+  // back to something insecure.
+  async function claimDiscountCode() {
+    const shop = wrapper?.dataset.shop;
+    if (!shop) return null;
+    try {
+      const res = await fetch("https://app.studyperks.me/discount-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.code || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Fixed-position popups need their coordinates computed from the button's
+  // actual screen position — themes with a sticky header often clip
+  // absolutely-positioned overflow, which cut these off before.
+  // widthEstimate keeps the popup fully on-screen when the icon sits near
+  // the right edge (e.g. a header with icons on the right on mobile) —
+  // without this the box, and the tappable arrow inside it, run off-screen.
+  function positionFloating(el, widthEstimate = 240) {
+    if (!el) return;
+    const rect = btn.getBoundingClientRect();
+    const margin = 8;
+    const maxLeft = window.innerWidth - widthEstimate - margin;
+    const left = Math.min(rect.left, Math.max(margin, maxLeft));
+    el.style.top = `${Math.round(rect.bottom + 8)}px`;
+    el.style.left = `${Math.round(left)}px`;
+  }
 
   let verified = false;
 
   // Hide tooltip while silently verifying — no flash of wrong state
   if (tooltip) tooltip.style.visibility = "hidden";
+
+  // Shows the "you're verified" confirmation once per browser session,
+  // so it reassures without nagging on every page load.
+  function showVerifiedToast() {
+    if (!toast || sessionStorage.getItem("studyperks_toast_shown")) return;
+    sessionStorage.setItem("studyperks_toast_shown", "true");
+    toast.classList.add("studyperks-toast--visible");
+    setTimeout(() => toast.classList.remove("studyperks-toast--visible"), 5000);
+  }
 
   function setAppliedState() {
     verified = true;
@@ -21,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tooltip.style.visibility = "";
     }
     hideEmailPrompt();
+    showVerifiedToast();
   }
 
   function clearState() {
@@ -32,7 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tooltip) {
       tooltip.style.visibility = "";
       tooltip.classList.remove("studyperks-tooltip--hidden");
-      tooltip.textContent = "Student discount — click to claim";
+      tooltip.textContent = defaultTooltipText();
     }
   }
 
@@ -44,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showEmailPrompt() {
     if (emailPrompt) {
+      positionFloating(emailPrompt, 220);
       emailPrompt.classList.add("studyperks-email-prompt--visible");
       btn.closest(".studyperks-wrapper")?.classList.add("studyperks-prompt-open");
       emailInput?.focus();
@@ -70,16 +124,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // First-time verification — confirms eligibility then applies discount via redirect
+  // First-time verification — confirms eligibility, claims a fresh single-use
+  // code, then applies it via redirect
   async function checkTokenAndApply(walletAddress) {
     const eligible = await silentlyVerify(walletAddress);
-    if (eligible) {
-      localStorage.setItem("studyperks_applied", "true");
-      localStorage.setItem("studyperks_wallet", walletAddress);
-      window.location.href = `/discount/STUDYPERKS?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-      return true;
+    if (!eligible) return false;
+
+    const code = await claimDiscountCode();
+    if (!code) {
+      if (tooltip) tooltip.textContent = "Something went wrong — please try again";
+      return "code_error";
     }
-    return false;
+
+    localStorage.setItem("studyperks_applied", "true");
+    localStorage.setItem("studyperks_wallet", walletAddress);
+    window.location.href = `/discount/${code}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+    return true;
   }
 
   async function checkByEmail(email) {
@@ -96,19 +156,39 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
 
       if (data.eligible) {
+        const code = await claimDiscountCode();
+        if (!code) {
+          emailSubmit.textContent = "→";
+          emailSubmit.disabled = false;
+          emailInput.disabled = false;
+          if (emailMessage) {
+            emailMessage.textContent = "Something went wrong — please try again.";
+            emailMessage.classList.add("studyperks-email-prompt__message--visible");
+            setTimeout(() => {
+              emailMessage.classList.remove("studyperks-email-prompt__message--visible");
+            }, 5000);
+          }
+          return;
+        }
+
         localStorage.setItem("studyperks_applied", "true");
         // Email sessions expire after 7 days and require re-verification
         localStorage.setItem("studyperks_expiry", String(Date.now() + 7 * 24 * 60 * 60 * 1000));
-        window.location.href = `/discount/STUDYPERKS?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        window.location.href = `/discount/${code}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
       } else {
         emailInput.value = "";
-        emailInput.placeholder = "No account — verify at studyperks.me";
         emailSubmit.textContent = "→";
         emailSubmit.disabled = false;
         emailInput.disabled = false;
-        setTimeout(() => {
-          emailInput.placeholder = "your@student.email";
-        }, 4000);
+        if (emailMessage) {
+          emailMessage.textContent =
+            emailMessage.dataset.notEligibleText ||
+            "Go to StudyPerks to verify your student status — takes 30 seconds.";
+          emailMessage.classList.add("studyperks-email-prompt__message--visible");
+          setTimeout(() => {
+            emailMessage.classList.remove("studyperks-email-prompt__message--visible");
+          }, 5000);
+        }
       }
     } catch (err) {
       console.error("StudyPerks email check error:", err);
@@ -182,6 +262,9 @@ document.addEventListener("DOMContentLoaded", () => {
     window.solana.on("accountChanged", resetState);
   }
 
+  // Recompute the tooltip's fixed position right before it becomes visible via CSS :hover
+  btn.closest(".studyperks-wrapper")?.addEventListener("mouseenter", () => positionFloating(tooltip));
+
   // Close email prompt on outside click
   document.addEventListener("click", (e) => {
     if (!btn.contains(e.target) && !emailPrompt?.contains(e.target)) {
@@ -212,16 +295,22 @@ document.addEventListener("DOMContentLoaded", () => {
         const walletAddress = resp.publicKey.toString();
         if (tooltip) tooltip.textContent = "Verifying...";
         const eligible = await checkTokenAndApply(walletAddress);
-        if (!eligible) {
+        if (eligible === false) {
           if (tooltip) tooltip.textContent = "No StudyPerks token found";
           setTimeout(() => {
-            if (tooltip) tooltip.textContent = "Student discount — click to claim";
+            if (tooltip) tooltip.textContent = defaultTooltipText();
+            btn.disabled = false;
+          }, 3000);
+        } else if (eligible === "code_error") {
+          // Tooltip text already set inside checkTokenAndApply
+          setTimeout(() => {
+            if (tooltip) tooltip.textContent = defaultTooltipText();
             btn.disabled = false;
           }, 3000);
         }
       } catch (err) {
         console.error("StudyPerks error:", err);
-        if (tooltip) tooltip.textContent = "Student discount — click to claim";
+        if (tooltip) tooltip.textContent = defaultTooltipText();
         btn.disabled = false;
       }
       return;

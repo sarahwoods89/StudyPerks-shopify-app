@@ -42,6 +42,11 @@ export const action = async ({ request }) => {
     code: "STUDYPERKS",
     startsAt: new Date().toISOString(),
     customerSelection: { all: true },
+    // Emergency stopgap: the code is a shared, publicly-visible string (it's in
+    // connect-wallet.js's redirect URL), so anyone who finds it can apply it at
+    // checkout with zero verification. This caps total exposure until unique,
+    // per-verification single-use codes replace this. Remove once that ships.
+    usageLimit: 25,
     customerGets: {
       value:
         type === "percentage"
@@ -100,6 +105,7 @@ export const action = async ({ request }) => {
               discount: {
                 title: name,
                 customerGets: discountInput.customerGets,
+                usageLimit: discountInput.usageLimit,
               },
             },
           }

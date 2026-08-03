@@ -22,6 +22,21 @@ model DiscountConfig {
   updatedAt     DateTime @updatedAt
 }
 
+// A pool of unique, single-use discount codes per shop, generated in batches
+// on the shop's StudyPerks discount. Replaces handing out one shared,
+// guessable code to every customer — see 2026-08-03 security fix.
+model StudentDiscountCode {
+  id              String    @id @default(cuid())
+  shop            String
+  code            String
+  issuedAt        DateTime?
+  redeemedOrderId String?
+  createdAt       DateTime  @default(now())
+
+  @@unique([shop, code])
+  @@index([shop, issuedAt])
+}
+
 model AffiliateTransaction {
   id           String   @id @default(cuid())
   shop         String

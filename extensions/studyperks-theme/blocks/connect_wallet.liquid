@@ -1,4 +1,7 @@
-<div class="studyperks-wrapper">
+<div class="studyperks-wrapper" data-shop="{{ shop.permanent_domain }}" style="padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px;">
+  {% if block.settings.title_text != blank %}
+    <p class="studyperks-badge__title"{% if block.settings.title_background != blank %} style="background-color: {{ block.settings.title_background }};"{% endif %}>{{ block.settings.title_text }}</p>
+  {% endif %}
   <iframe
     id="studyperks-session-bridge"
     src="https://www.studyperks.me/session-bridge"
@@ -10,7 +13,7 @@
   ></iframe>
   <button
     id="studyperks-wallet-connect"
-    class="studyperks-badge"
+    class="studyperks-badge{% if block.settings.compact_style %} studyperks-badge--compact{% endif %}"
     type="button"
     aria-label="StudyPerks — connect to claim your student discount"
   >
@@ -20,22 +23,38 @@
       class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
       width="32"
       height="32"
+      {% if block.settings.compact_style %}
+        style="width: {{ block.settings.icon_size }}px; height: {{ block.settings.icon_size }}px;"
+      {% endif %}
     />
+    <span class="studyperks-badge__status-dot" aria-hidden="true"></span>
   </button>
 
   <div class="studyperks-email-prompt" id="studyperks-email-prompt">
-    <input
-      type="email"
-      id="studyperks-email-input"
-      class="studyperks-email-input"
-      placeholder="your@student.email"
-      autocomplete="email"
-    />
-    <button type="button" id="studyperks-email-submit" class="studyperks-email-submit">&#8594;</button>
+    <div class="studyperks-email-prompt__row">
+      <input
+        type="email"
+        id="studyperks-email-input"
+        class="studyperks-email-input"
+        placeholder="your@student.email"
+        autocomplete="email"
+      />
+      <button type="button" id="studyperks-email-submit" class="studyperks-email-submit">&#8594;</button>
+    </div>
+    <p
+      class="studyperks-email-prompt__message"
+      id="studyperks-email-message"
+      data-not-eligible-text="{{ block.settings.not_eligible_text | escape }}"
+    ></p>
   </div>
 
-  <div class="studyperks-tooltip" id="studyperks-tooltip">
-    Student discount — click to claim
+  <div class="studyperks-tooltip" id="studyperks-tooltip" data-default-text="{{ block.settings.hover_text | escape }}">
+    {{ block.settings.hover_text }}
+  </div>
+
+  <div class="studyperks-toast" id="studyperks-toast" role="status" aria-live="polite">
+    <span class="studyperks-toast__icon" aria-hidden="true">&#10003;</span>
+    <span>You're verified — your student discount is applied automatically. Happy shopping!</span>
   </div>
 
 </div>
@@ -59,6 +78,67 @@
         { "value": "white", "label": "White" }
       ],
       "default": "original"
+    },
+    {
+      "type": "checkbox",
+      "id": "compact_style",
+      "label": "Show as plain icon (no border or background)",
+      "info": "Turn this on when placing the badge in your header, next to search/account/cart icons.",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "Icon size (plain icon style only)",
+      "min": 18,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 26
+    },
+    {
+      "type": "text",
+      "id": "title_text",
+      "label": "Title text above icon (optional)",
+      "info": "Leave blank to hide. Suggested: \"Click on the StudyPerks badge for your instant discount\" — good for footers, usually skipped in headers."
+    },
+    {
+      "type": "color",
+      "id": "title_background",
+      "label": "Background colour behind title text (optional)",
+      "info": "Leave unset to keep it as plain text with no background."
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Space above",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Space below",
+      "min": 0,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "text",
+      "id": "hover_text",
+      "label": "Hover text (shown before verification)",
+      "default": "Click to claim your student discount"
+    },
+    {
+      "type": "text",
+      "id": "not_eligible_text",
+      "label": "Message when an email isn't verified",
+      "default": "Go to StudyPerks to verify your student status — takes 30 seconds."
     }
   ]
 }
