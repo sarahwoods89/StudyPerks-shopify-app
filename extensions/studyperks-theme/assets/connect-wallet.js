@@ -20,9 +20,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const shop = wrapper?.dataset.shop;
     if (!shop) return null;
     try {
+      // text/plain avoids a CORS preflight (OPTIONS) round-trip — Remix's dev
+      // server intercepts OPTIONS before it reaches our route handler, so a
+      // "simple" request that skips preflight entirely is the reliable fix.
+      // The server still parses the body as JSON regardless of this header.
       const res = await fetch("https://app.studyperks.me/discount-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" },
         body: JSON.stringify({ shop }),
       });
       if (!res.ok) return null;
