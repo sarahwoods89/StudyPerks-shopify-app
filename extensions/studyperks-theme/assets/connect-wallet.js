@@ -16,7 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // a shared guessable word — see 2026-08-03 security fix. Returns null on
   // any failure so callers can show an error rather than silently falling
   // back to something insecure.
-  async function claimDiscountCode() {
+  // identifier is { wallet } or { email } — the server independently
+  // re-verifies eligibility with it rather than trusting this call alone,
+  // since this endpoint can be reached directly, bypassing the widget
+  // entirely — see 2026-08-04 fix.
+  async function claimDiscountCode(identifier) {
     const shop = wrapper?.dataset.shop;
     if (!shop) return null;
     try {
@@ -27,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const res = await fetch("https://app.studyperks.me/discount-code", {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ shop }),
+        body: JSON.stringify({ shop, ...identifier }),
       });
       if (!res.ok) return null;
       const data = await res.json();
@@ -134,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const eligible = await silentlyVerify(walletAddress);
     if (!eligible) return false;
 
-    const code = await claimDiscountCode();
+    const code = await claimDiscountCode({ wallet: walletAddress });
     if (!code) {
       if (tooltip) tooltip.textContent = "Something went wrong — please try again";
       return "code_error";
@@ -160,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
 
       if (data.eligible) {
-        const code = await claimDiscountCode();
+        const code = await claimDiscountCode({ email });
         if (!code) {
           emailSubmit.textContent = "→";
           emailSubmit.disabled = false;
