@@ -1,4 +1,5 @@
 import db from "../db.server.js";
+import { getValidAccessToken } from "./tokenRefresh.server.js";
 
 const API_VERSION = "2025-01";
 const BATCH_SIZE = 50;
@@ -28,10 +29,7 @@ async function adminGraphql(shop, accessToken, query, variables) {
 }
 
 async function getAccessToken(shop) {
-  const session = await db.session.findFirst({
-    where: { shop, isOnline: false },
-  });
-  return session?.accessToken ?? null;
+  return getValidAccessToken(shop);
 }
 
 // Finds the redeem-code ID for an exact code string on a discount, paging
@@ -104,16 +102,71 @@ export async function removeCode(shop, exactCode) {
   return { removed: true };
 }
 
-async function getDiscountId(shop, accessToken) {
+async function lookupDiscountIdByCode(shop, accessToken, code) {
+  const res = await adminGraphql(
+    shop,
+    accessToken,
+    `#graphql
+    query LookupDiscount($code: String!) {
+      codeDiscountNodeByCode(code: $code) { id }
+    }`,
+    { code }
+  );
+  return res?.data?.codeDiscountNodeByCode?.id ?? null;
+}
+
+// Last-resort fallback: lists the shop's code discounts and matches by title
+// (what we stored as discountName when it was created) — works even when no
+// code at all (old or new) exists to search by.
+async function lookupDiscountIdByTitle(shop, accessToken, title) {
   const res = await adminGraphql(
     shop,
     accessToken,
     `#graphql
     query {
-      codeDiscountNodeByCode(code: "STUDYPERKS") { id }
+      codeDiscountNodes(first: 25) {
+        nodes {
+          id
+          codeDiscount {
+            ... on DiscountCodeBasic { title }
+          }
+        }
+      }
     }`
   );
-  return res?.data?.codeDiscountNodeByCode?.id ?? null;
+  const nodes = res?.data?.codeDiscountNodes?.nodes ?? [];
+  const match = nodes.find((n) => n.codeDiscount?.title === title) ?? nodes[0];
+  return match?.id ?? null;
+}
+
+// Finds the shop's StudyPerks discount ID without depending on "STUDYPERKS"
+// still existing as a code — that broke once it was removed for security.
+// Caches the result so this lookup, in any form, only ever has to happen once.
+async function getDiscountId(shop, accessToken) {
+  const config = await db.discountConfig.findUnique({ where: { shop } });
+  if (config?.discountId) return config.discountId;
+
+  let id = await lookupDiscountIdByCode(shop, accessToken, "STUDYPERKS");
+
+  if (!id) {
+    // STUDYPERKS may already be gone — fall back to any code we've issued.
+    const anyCode = await db.studentDiscountCode.findFirst({ where: { shop } });
+    if (anyCode) {
+      id = await lookupDiscountIdByCode(shop, accessToken, anyCode.code);
+    }
+  }
+
+  if (!id && config?.discountName) {
+    // Neither code lookup found anything — no code of any kind exists to
+    // search by yet. Fall back to listing discounts and matching by title.
+    id = await lookupDiscountIdByTitle(shop, accessToken, config.discountName);
+  }
+
+  if (id) {
+    await db.discountConfig.updateMany({ where: { shop }, data: { discountId: id } });
+  }
+
+  return id;
 }
 
 // Generates a batch of unique codes on the shop's existing STUDYPERKS discount
