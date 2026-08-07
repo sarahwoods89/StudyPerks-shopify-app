@@ -19,6 +19,9 @@ model DiscountConfig {
   discountName  String
   discountType  String
   discountValue Float
+  // Which collections the discount is scoped to when scope isn't "all" —
+  // e.g. everything except a merchant's "Sale" collection. Empty = all products.
+  discountCollections String[] @default([])
   // Cached Shopify discount ID (gid://shopify/DiscountCodeNode/...) so we
   // never have to rediscover it by searching for a specific code string —
   // that broke once STUDYPERKS itself was removed as a code. Set on first

@@ -17,10 +17,28 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export const loader = async ({ request }) => {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const shop = session.shop;
   const config = await db.discountConfig.findUnique({ where: { shop } });
-  return json({ config });
+
+  // Resolve saved collection IDs to titles for display — the form only
+  // stores IDs, so the picker needs names to show something readable.
+  let selectedCollections = [];
+  if (config?.discountCollections?.length) {
+    const res = await admin.graphql(
+      `#graphql
+      query GetCollectionTitles($ids: [ID!]!) {
+        nodes(ids: $ids) {
+          ... on Collection { id title }
+        }
+      }`,
+      { variables: { ids: config.discountCollections } }
+    );
+    const data = await res.json();
+    selectedCollections = (data?.data?.nodes ?? []).filter(Boolean);
+  }
+
+  return json({ config, selectedCollections });
 };
 
 export const action = async ({ request }) => {
@@ -30,12 +48,25 @@ export const action = async ({ request }) => {
   const name = body.get("name");
   const type = body.get("type");
   const value = body.get("value");
+  const scope = body.get("scope") || "all";
+  let collectionIds = [];
+  try {
+    collectionIds = JSON.parse(body.get("collectionIds") || "[]");
+  } catch {
+    collectionIds = [];
+  }
+  if (scope !== "collections") collectionIds = [];
 
   await db.discountConfig.upsert({
     where: { shop },
-    update: { discountName: name, discountType: type, discountValue: Number(value) },
-    create: { shop, discountName: name, discountType: type, discountValue: Number(value) },
+    update: { discountName: name, discountType: type, discountValue: Number(value), discountCollections: collectionIds },
+    create: { shop, discountName: name, discountType: type, discountValue: Number(value), discountCollections: collectionIds },
   });
+
+  const items =
+    scope === "collections" && collectionIds.length > 0
+      ? { collections: { add: collectionIds } }
+      : { all: true };
 
   const discountInput = {
     title: name,
@@ -52,7 +83,7 @@ export const action = async ({ request }) => {
         type === "percentage"
           ? { percentage: Number(value) / 100 }
           : { discountAmount: { amount: String(value), appliesOnEachItem: false } },
-      items: { all: true },
+      items,
     },
   };
 
@@ -137,16 +168,30 @@ export const action = async ({ request }) => {
 };
 
 export default function Settings() {
-  const { config } = useLoaderData();
+  const { config, selectedCollections: initialCollections } = useLoaderData();
   const navigation = useNavigation();
   const actionData = useActionData();
 
   const [name, setName] = useState(config?.discountName ?? "Student Discount");
   const [type, setType] = useState(config?.discountType ?? "percentage");
   const [value, setValue] = useState(String(config?.discountValue ?? "10"));
-  const [scope, setScope] = useState("all");
+  const [scope, setScope] = useState(
+    config?.discountCollections?.length ? "collections" : "all"
+  );
+  const [collections, setCollections] = useState(initialCollections ?? []);
 
   const isSaving = navigation.state !== "idle";
+
+  async function pickCollections() {
+    const picked = await window.shopify.resourcePicker({
+      type: "collection",
+      multiple: true,
+      selectionIds: collections.map((c) => ({ id: c.id })),
+    });
+    if (picked) {
+      setCollections(picked.map((c) => ({ id: c.id, title: c.title })));
+    }
+  }
 
   return (
     <Page>
@@ -204,16 +249,36 @@ export default function Settings() {
 
               <Select
                 label="Applies to"
-                name="scope"
                 options={[
                   { label: "All products", value: "all" },
+                  { label: "Specific collections", value: "collections" },
                 ]}
                 value={scope}
                 onChange={setScope}
-                helpText="Discount applies to all products in your store."
+                helpText={
+                  scope === "all"
+                    ? "Discount applies to all products in your store."
+                    : "Choose which collections the discount applies to — e.g. everything except your Sale collection."
+                }
               />
 
+              {scope === "collections" && (
+                <BlockStack gap="200">
+                  <Button onClick={pickCollections}>Choose collections</Button>
+                  {collections.length > 0 && (
+                    <Text as="p" variant="bodyMd" tone="subdued">
+                      Applies to: {collections.map((c) => c.title).join(", ")}
+                    </Text>
+                  )}
+                </BlockStack>
+              )}
+
               <input type="hidden" name="scope" value={scope} />
+              <input
+                type="hidden"
+                name="collectionIds"
+                value={JSON.stringify(collections.map((c) => c.id))}
+              />
 
               <InlineStack>
                 <button
