@@ -1,19 +1,9 @@
-import { json, redirect, createCookieSessionStorage } from "@remix-run/node";
-import { useLoaderData, Form } from "@remix-run/react";
+import { json, redirect } from "@remix-run/node";
+import { useLoaderData, Form, Link } from "@remix-run/react";
 import db from "../db.server";
+import { getSession, commitSession } from "../lib/adminSession.server";
 
 const COMMISSION_RATE = 0.05;
-
-const { getSession, commitSession } = createCookieSessionStorage({
-  cookie: {
-    name: "sp_admin",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    secrets: [process.env.ADMIN_PASSWORD || "studyperks-secret"],
-    sameSite: "lax",
-    maxAge: 60 * 60 * 8, // 8 hours
-  },
-});
 
 export const action = async ({ request }) => {
   const form = await request.formData();
@@ -68,6 +58,8 @@ const s = {
   th: { textAlign: "left", padding: "10px 12px", borderBottom: "2px solid #ede9fe", color: "#5b21b6", fontWeight: "600", fontSize: "12px", textTransform: "uppercase" },
   td: { padding: "10px 12px", borderBottom: "1px solid #f3f4f6", color: "#374151" },
   badge: { background: "#ede9fe", color: "#5b21b6", borderRadius: "20px", padding: "2px 10px", fontSize: "12px", fontWeight: "600" },
+  link: { color: "#5b21b6", fontWeight: "600", textDecoration: "none" },
+  back: { color: "#5b21b6", fontSize: "13px", textDecoration: "none", marginBottom: "16px", display: "inline-block" },
   input: { width: "100%", padding: "10px 14px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "15px", marginBottom: "12px", boxSizing: "border-box" },
   btn: { background: "#5b21b6", color: "#fff", border: "none", borderRadius: "8px", padding: "10px 24px", fontSize: "15px", fontWeight: "600", cursor: "pointer", width: "100%" },
   err: { color: "#dc2626", marginBottom: "10px", fontSize: "14px" },
@@ -145,7 +137,9 @@ export default function Admin() {
             <tbody>
               {Object.entries(byShop).map(([shop, info]) => (
                 <tr key={shop}>
-                  <td style={s.td}>{shop}</td>
+                  <td style={s.td}>
+                    <Link to={`/admin/merchant/${encodeURIComponent(shop)}`} style={s.link}>{shop}</Link>
+                  </td>
                   <td style={s.td}>{info.orders}</td>
                   <td style={s.td}>£{info.revenue.toFixed(2)}</td>
                   <td style={s.td}>
