@@ -52,8 +52,25 @@ model AffiliateTransaction {
   orderTotal   Float
   discountCode String
   createdAt    DateTime @default(now())
+  // Set when this order is included on a generated invoice, so the next
+  // invoice for this shop only picks up orders not yet billed.
+  invoiceId    String?
 
   @@unique([shop, orderId])
+}
+
+// A generated commission invoice for one shop, covering every
+// AffiliateTransaction with a matching invoiceId.
+model Invoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  shop            String
+  periodStart     DateTime
+  periodEnd       DateTime
+  orderCount      Int
+  revenueTotal    Float
+  commissionTotal Float
+  createdAt       DateTime @default(now())
 }
 
 model Session {
