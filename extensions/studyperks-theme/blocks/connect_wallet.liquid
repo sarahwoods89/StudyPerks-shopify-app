@@ -17,35 +17,16 @@
     type="button"
     aria-label="StudyPerks — connect to claim your student discount"
   >
-    {% if block.settings.logo_style == "outline_black" or block.settings.logo_style == "outline_white" %}
-      {% if block.settings.logo_style == "outline_white" %}
-        {% assign outline_color = "#ffffff" %}
-      {% else %}
-        {% assign outline_color = "#000000" %}
-      {% endif %}
+    <img
+      src="{{ 'StudyPerksLogo.png' | asset_url }}"
+      alt="StudyPerks"
+      class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
+      width="32"
+      height="32"
       {% if block.settings.compact_style %}
-        {% assign outline_size = block.settings.icon_size %}
-      {% else %}
-        {% assign outline_size = 32 %}
+        style="width: {{ block.settings.icon_size }}px; height: {{ block.settings.icon_size }}px;"
       {% endif %}
-      <span
-        class="studyperks-badge__logo studyperks-badge__logo--outline"
-        style="color: {{ outline_color }}; width: {{ outline_size }}px; height: {{ outline_size }}px;"
-        role="img"
-        aria-label="StudyPerks"
-      >{{ 'studyperks-icon-tight.svg' | inline_asset_content }}</span>
-    {% else %}
-      <img
-        src="{{ 'StudyPerksLogo.png' | asset_url }}"
-        alt="StudyPerks"
-        class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
-        width="32"
-        height="32"
-        {% if block.settings.compact_style %}
-          style="width: {{ block.settings.icon_size }}px; height: {{ block.settings.icon_size }}px;"
-        {% endif %}
-      />
-    {% endif %}
+    />
     <span class="studyperks-badge__status-dot" aria-hidden="true"></span>
   </button>
 
@@ -94,9 +75,7 @@
         { "value": "original", "label": "Original (gradient)" },
         { "value": "greyscale", "label": "Greyscale" },
         { "value": "black", "label": "Black" },
-        { "value": "white", "label": "White" },
-        { "value": "outline_black", "label": "Outline (black) — matches theme icons" },
-        { "value": "outline_white", "label": "Outline (white) — matches theme icons" }
+        { "value": "white", "label": "White" }
       ],
       "default": "original"
     },
