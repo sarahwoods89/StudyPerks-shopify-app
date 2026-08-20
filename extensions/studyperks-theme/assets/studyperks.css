@@ -192,6 +192,22 @@
   display: block;
 }
 
+.studyperks-email-prompt__link {
+  display: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #5B21B6;
+  text-decoration: none;
+}
+
+.studyperks-email-prompt__link:hover {
+  text-decoration: underline;
+}
+
+.studyperks-email-prompt__link--visible {
+  display: inline-block;
+}
+
 .studyperks-email-prompt::before {
   content: '';
   position: absolute;

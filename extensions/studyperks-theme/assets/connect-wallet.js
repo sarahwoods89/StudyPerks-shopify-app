@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const emailInput = document.getElementById("studyperks-email-input");
   const emailSubmit = document.getElementById("studyperks-email-submit");
   const emailMessage = document.getElementById("studyperks-email-message");
+  const verifyLink = document.getElementById("studyperks-verify-link");
   const toast = document.getElementById("studyperks-toast");
   const wrapper = btn.closest(".studyperks-wrapper");
   if (!btn) return;
@@ -193,8 +194,10 @@ document.addEventListener("DOMContentLoaded", () => {
             emailMessage.dataset.notEligibleText ||
             "Go to StudyPerks to verify your student status — takes 30 seconds.";
           emailMessage.classList.add("studyperks-email-prompt__message--visible");
+          verifyLink?.classList.add("studyperks-email-prompt__link--visible");
           setTimeout(() => {
             emailMessage.classList.remove("studyperks-email-prompt__message--visible");
+            verifyLink?.classList.remove("studyperks-email-prompt__link--visible");
           }, 5000);
         }
       }
