@@ -190,15 +190,14 @@ document.addEventListener("DOMContentLoaded", () => {
         emailSubmit.disabled = false;
         emailInput.disabled = false;
         if (emailMessage) {
+          // Stays visible until the prompt itself is closed (outside click) or
+          // resubmitted — a 5s auto-hide didn't leave enough time to read the
+          // message and click the verify link.
           emailMessage.textContent =
             emailMessage.dataset.notEligibleText ||
             "Go to StudyPerks to verify your student status — takes 30 seconds.";
           emailMessage.classList.add("studyperks-email-prompt__message--visible");
           verifyLink?.classList.add("studyperks-email-prompt__link--visible");
-          setTimeout(() => {
-            emailMessage.classList.remove("studyperks-email-prompt__message--visible");
-            verifyLink?.classList.remove("studyperks-email-prompt__link--visible");
-          }, 5000);
         }
       }
     } catch (err) {
