@@ -76,6 +76,7 @@ model Invoice {
 model Session {
   id            String    @id
   shop          String
+  createdAt     DateTime  @default(now())
   state         String
   isOnline      Boolean   @default(false)
   scope         String?

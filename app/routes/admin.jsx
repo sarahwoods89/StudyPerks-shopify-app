@@ -39,7 +39,21 @@ export const loader = async ({ request }) => {
   const totalRevenue = transactions.reduce((sum, t) => sum + t.orderTotal, 0);
   const totalCommission = totalRevenue * COMMISSION_RATE;
 
-  return json({ authed: true, transactions, byShop, totalOrders, totalRevenue, totalCommission });
+  // Sessions are created on install and deleted on the app/uninstalled webhook,
+  // so this table is the live list of shops with the app currently installed —
+  // including ones with zero orders so far, which byShop above would never show.
+  const sessions = await db.session.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  const seenShops = new Set();
+  const installedShops = [];
+  for (const s of sessions) {
+    if (seenShops.has(s.shop)) continue;
+    seenShops.add(s.shop);
+    installedShops.push({ shop: s.shop, email: s.email, installedAt: s.createdAt });
+  }
+
+  return json({ authed: true, transactions, byShop, totalOrders, totalRevenue, totalCommission, installedShops });
 };
 
 const s = {
@@ -92,7 +106,7 @@ export default function Admin() {
     );
   }
 
-  const { transactions, byShop, totalOrders, totalRevenue, totalCommission } = data;
+  const { transactions, byShop, totalOrders, totalRevenue, totalCommission, installedShops } = data;
 
   return (
     <div style={s.page}>
@@ -120,6 +134,38 @@ export default function Admin() {
             <p style={s.statValue}>£{totalCommission.toFixed(2)}</p>
             <p style={s.statNote}>Across all merchants</p>
           </div>
+        </div>
+
+        {/* Installed merchants — includes shops with zero orders so far */}
+        <div style={s.card}>
+          <p style={s.sectionTitle}>Installed Merchants ({installedShops.length})</p>
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={s.th}>Shop</th>
+                <th style={s.th}>Installed</th>
+                <th style={s.th}>Orders</th>
+              </tr>
+            </thead>
+            <tbody>
+              {installedShops.map(({ shop, installedAt }) => (
+                <tr key={shop}>
+                  <td style={s.td}>
+                    <Link to={`/admin/merchant/${encodeURIComponent(shop)}`} style={s.link}>{shop}</Link>
+                  </td>
+                  <td style={s.td}>{new Date(installedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
+                  <td style={s.td}>
+                    {byShop[shop]
+                      ? <span style={s.badge}>{byShop[shop].orders}</span>
+                      : <span style={{ color: "#9ca3af" }}>No orders yet</span>}
+                  </td>
+                </tr>
+              ))}
+              {installedShops.length === 0 && (
+                <tr><td style={s.td} colSpan={3}>No installs yet.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Per merchant breakdown */}
