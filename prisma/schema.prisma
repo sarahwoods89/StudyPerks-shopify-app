@@ -76,6 +76,10 @@ model Invoice {
 model Session {
   id            String    @id
   shop          String
+  // Cached display name from the Shopify Admin API (e.g. "Lerelle Beauty")
+  // — the shop's .myshopify.com domain often doesn't match its storefront
+  // name/brand at all, so this saves manually looking each one up.
+  shopName      String?
   createdAt     DateTime  @default(now())
   state         String
   isOnline      Boolean   @default(false)

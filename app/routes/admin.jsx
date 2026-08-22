@@ -2,6 +2,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, Form, Link } from "@remix-run/react";
 import db from "../db.server";
 import { getSession, commitSession } from "../lib/adminSession.server";
+import { getShopDisplayName } from "../lib/shopName.server";
 
 const COMMISSION_RATE = 0.05;
 
@@ -46,12 +47,19 @@ export const loader = async ({ request }) => {
     orderBy: { createdAt: "desc" },
   });
   const seenShops = new Set();
-  const installedShops = [];
+  const uniqueSessions = [];
   for (const s of sessions) {
     if (seenShops.has(s.shop)) continue;
     seenShops.add(s.shop);
-    installedShops.push({ shop: s.shop, email: s.email, installedAt: s.createdAt });
+    uniqueSessions.push(s);
   }
+  const installedShops = await Promise.all(
+    uniqueSessions.map(async (s) => ({
+      shop: s.shop,
+      displayName: await getShopDisplayName(s.shop, s.shopName),
+      installedAt: s.createdAt,
+    })),
+  );
 
   return json({ authed: true, transactions, byShop, totalOrders, totalRevenue, totalCommission, installedShops });
 };
@@ -148,10 +156,11 @@ export default function Admin() {
               </tr>
             </thead>
             <tbody>
-              {installedShops.map(({ shop, installedAt }) => (
+              {installedShops.map(({ shop, displayName, installedAt }) => (
                 <tr key={shop}>
                   <td style={s.td}>
-                    <Link to={`/admin/merchant/${encodeURIComponent(shop)}`} style={s.link}>{shop}</Link>
+                    <Link to={`/admin/merchant/${encodeURIComponent(shop)}`} style={s.link}>{displayName || shop}</Link>
+                    {displayName && <div style={{ fontSize: "11px", color: "#9ca3af" }}>{shop}</div>}
                   </td>
                   <td style={s.td}>{new Date(installedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
                   <td style={s.td}>
