@@ -15,7 +15,7 @@ import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/re
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
-import { randomCode } from "../lib/discountCodes.server";
+import { randomCode, getDiscountId } from "../lib/discountCodes.server";
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
@@ -69,92 +69,79 @@ export const action = async ({ request }) => {
       ? { collections: { add: collectionIds } }
       : { all: true };
 
-  const discountInput = {
-    title: name,
-    // discountCodeBasicCreate requires a seed code, but this one is never
-    // handed out to a real customer — actual redemptions use the unique
-    // single-use SP-XXXXXXXXXX pool (discountCodes.server.js), issued only
-    // after server-side verification. A guessable word like "STUDYPERKS"
-    // here was a live checkout bypass — see 2026-08-03 security fix.
-    code: randomCode(),
-    startsAt: new Date().toISOString(),
-    customerSelection: { all: true },
-    usageLimit: 1,
-    customerGets: {
-      value:
-        type === "percentage"
-          ? { percentage: Number(value) / 100 }
-          : { discountAmount: { amount: String(value), appliesOnEachItem: false } },
-      items,
-    },
+  const customerGets = {
+    value:
+      type === "percentage"
+        ? { percentage: Number(value) / 100 }
+        : { discountAmount: { amount: String(value), appliesOnEachItem: false } },
+    items,
   };
 
   try {
-    const discountRes = await admin.graphql(
-      `#graphql
-      mutation CreateStudyPerksDiscount($discount: DiscountCodeBasicInput!) {
-        discountCodeBasicCreate(basicCodeDiscount: $discount) {
-          codeDiscountNode { id }
-          userErrors { field message }
-        }
-      }`,
-      { variables: { discount: discountInput } }
-    );
+    // Look up this shop's discount by its cached/discoverable ID rather than
+    // by a fixed code string — a merchant saving Settings twice used to
+    // always attempt a fresh discountCodeBasicCreate, relying on Shopify
+    // rejecting a duplicate "STUDYPERKS" code to detect "this already
+    // exists, update it instead." Once the seed code became random per
+    // save (see 2026-08-24 security fix), that duplicate-code error would
+    // basically never fire again, so every re-save would silently create a
+    // brand new, separate discount instead of updating the existing one.
+    const existingId = await getDiscountId(shop, session.accessToken);
 
-    const discountData = await discountRes.json();
-    console.log("discountCodeBasicCreate response:", JSON.stringify(discountData));
-
-    const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
-    const isAlreadyExists = errors.some(
-      (e) =>
-        e.message.toLowerCase().includes("must be unique") ||
-        e.message.toLowerCase().includes("already been taken") ||
-        e.message.toLowerCase().includes("already exists")
-    );
-
-    if (isAlreadyExists) {
-      const lookupRes = await admin.graphql(
+    if (existingId) {
+      const updateRes = await admin.graphql(
         `#graphql
-        query GetStudyPerksDiscount {
-          codeDiscountNodeByCode(code: "STUDYPERKS") { id }
-        }`
-      );
-      const lookupData = await lookupRes.json();
-      console.log("codeDiscountNodeByCode lookup:", JSON.stringify(lookupData));
-      const existingId = lookupData?.data?.codeDiscountNodeByCode?.id;
-
-      if (existingId) {
-        const updateRes = await admin.graphql(
-          `#graphql
-          mutation UpdateStudyPerksDiscount($id: ID!, $discount: DiscountCodeBasicInput!) {
-            discountCodeBasicUpdate(id: $id, basicCodeDiscount: $discount) {
-              codeDiscountNode { id }
-              userErrors { field message }
-            }
-          }`,
-          {
-            variables: {
-              id: existingId,
-              discount: {
-                title: name,
-                customerGets: discountInput.customerGets,
-                usageLimit: discountInput.usageLimit,
-              },
-            },
+        mutation UpdateStudyPerksDiscount($id: ID!, $discount: DiscountCodeBasicInput!) {
+          discountCodeBasicUpdate(id: $id, basicCodeDiscount: $discount) {
+            codeDiscountNode { id }
+            userErrors { field message }
           }
-        );
-        const updateData = await updateRes.json();
-        console.log("discountCodeBasicUpdate response:", JSON.stringify(updateData));
-        const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
-        if (updateErrors.length > 0) {
-          return json({ error: `Could not update discount: ${updateErrors[0].message}` }, { status: 400 });
-        }
-      } else {
-        return json({ error: "Discount code already exists but could not be found to update." }, { status: 400 });
+        }`,
+        { variables: { id: existingId, discount: { title: name, customerGets } } }
+      );
+      const updateData = await updateRes.json();
+      console.log("discountCodeBasicUpdate response:", JSON.stringify(updateData));
+      const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
+      if (updateErrors.length > 0) {
+        return json({ error: `Could not update discount: ${updateErrors[0].message}` }, { status: 400 });
       }
-    } else if (errors.length > 0) {
-      console.error("discountCodeBasicCreate userErrors:", JSON.stringify(errors));
-      return json({ error: `Could not create discount: ${errors[0].message}` }, { status: 400 });
+    } else {
+      const discountInput = {
+        title: name,
+        // discountCodeBasicCreate requires a seed code, but this one is never
+        // handed out to a real customer — actual redemptions use the unique
+        // single-use SP-XXXXXXXXXX pool (discountCodes.server.js), issued
+        // only after server-side verification. usageLimit caps how many
+        // TOTAL redemptions this one seed code allows across every
+        // customer combined (Shopify-wide meaning, not "per email" or
+        // "per store") — set to 1 since nobody should ever redeem it at all.
+        code: randomCode(),
+        startsAt: new Date().toISOString(),
+        customerSelection: { all: true },
+        usageLimit: 1,
+        customerGets,
+      };
+
+      const discountRes = await admin.graphql(
+        `#graphql
+        mutation CreateStudyPerksDiscount($discount: DiscountCodeBasicInput!) {
+          discountCodeBasicCreate(basicCodeDiscount: $discount) {
+            codeDiscountNode { id }
+            userErrors { field message }
+          }
+        }`,
+        { variables: { discount: discountInput } }
+      );
+      const discountData = await discountRes.json();
+      console.log("discountCodeBasicCreate response:", JSON.stringify(discountData));
+      const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
+      if (errors.length > 0) {
+        return json({ error: `Could not create discount: ${errors[0].message}` }, { status: 400 });
+      }
+      const newId = discountData?.data?.discountCodeBasicCreate?.codeDiscountNode?.id;
+      if (newId) {
+        await db.discountConfig.updateMany({ where: { shop }, data: { discountId: newId } });
+      }
     }
   } catch (err) {
     if (err instanceof Response) {

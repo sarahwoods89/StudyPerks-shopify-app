@@ -142,7 +142,7 @@ async function lookupDiscountIdByTitle(shop, accessToken, title) {
 // Finds the shop's StudyPerks discount ID without depending on "STUDYPERKS"
 // still existing as a code — that broke once it was removed for security.
 // Caches the result so this lookup, in any form, only ever has to happen once.
-async function getDiscountId(shop, accessToken) {
+export async function getDiscountId(shop, accessToken) {
   const config = await db.discountConfig.findUnique({ where: { shop } });
   if (config?.discountId) return config.discountId;
 
