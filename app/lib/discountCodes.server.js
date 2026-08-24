@@ -5,7 +5,7 @@ const API_VERSION = "2025-01";
 const BATCH_SIZE = 50;
 const LOW_WATER_MARK = 10;
 
-function randomCode() {
+export function randomCode() {
   // Avoids ambiguous characters (0/O, 1/I/l) since these can still show up
   // in order notes/emails even though customers don't type them by hand.
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";

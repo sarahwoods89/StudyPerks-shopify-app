@@ -15,6 +15,7 @@ import { Form, useLoaderData, useNavigation, useActionData } from "@remix-run/re
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { randomCode } from "../lib/discountCodes.server";
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
@@ -70,14 +71,15 @@ export const action = async ({ request }) => {
 
   const discountInput = {
     title: name,
-    code: "STUDYPERKS",
+    // discountCodeBasicCreate requires a seed code, but this one is never
+    // handed out to a real customer — actual redemptions use the unique
+    // single-use SP-XXXXXXXXXX pool (discountCodes.server.js), issued only
+    // after server-side verification. A guessable word like "STUDYPERKS"
+    // here was a live checkout bypass — see 2026-08-03 security fix.
+    code: randomCode(),
     startsAt: new Date().toISOString(),
     customerSelection: { all: true },
-    // Emergency stopgap: the code is a shared, publicly-visible string (it's in
-    // connect-wallet.js's redirect URL), so anyone who finds it can apply it at
-    // checkout with zero verification. This caps total exposure until unique,
-    // per-verification single-use codes replace this. Remove once that ships.
-    usageLimit: 25,
+    usageLimit: 1,
     customerGets: {
       value:
         type === "percentage"
