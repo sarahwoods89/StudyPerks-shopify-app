@@ -115,16 +115,23 @@ async function lookupDiscountIdByCode(shop, accessToken, code) {
   return res?.data?.codeDiscountNodeByCode?.id ?? null;
 }
 
-// Last-resort fallback: lists the shop's code discounts and matches by title
-// (what we stored as discountName when it was created) — works even when no
-// code at all (old or new) exists to search by.
+// Last-resort fallback: searches the shop's code discounts by title (what we
+// stored as discountName when it was created) — works even when no code at
+// all (old or new) exists to search by. Server-side filtered so it isn't
+// limited to only the shop's first page of discounts (a merchant can easily
+// have hundreds of unrelated ones — free shipping codes, email flows, etc).
+//
+// Must return null, never a guess: an earlier version fell back to "just
+// pick the first discount in the list" when no title match was found, which
+// silently pointed one shop's cached ID at a totally unrelated free-shipping
+// discount for weeks — see 2026-08-24 fix.
 async function lookupDiscountIdByTitle(shop, accessToken, title) {
   const res = await adminGraphql(
     shop,
     accessToken,
     `#graphql
-    query {
-      codeDiscountNodes(first: 25) {
+    query FindByTitle($query: String!) {
+      codeDiscountNodes(first: 10, query: $query) {
         nodes {
           id
           codeDiscount {
@@ -132,10 +139,11 @@ async function lookupDiscountIdByTitle(shop, accessToken, title) {
           }
         }
       }
-    }`
+    }`,
+    { query: `title:'${title.replace(/'/g, "\\'")}'` }
   );
   const nodes = res?.data?.codeDiscountNodes?.nodes ?? [];
-  const match = nodes.find((n) => n.codeDiscount?.title === title) ?? nodes[0];
+  const match = nodes.find((n) => n.codeDiscount?.title === title);
   return match?.id ?? null;
 }
 
