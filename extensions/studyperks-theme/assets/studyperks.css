@@ -23,9 +23,15 @@
 }
 
 /* ── The badge button ── */
+/* width/max-width forced with !important — themes commonly apply a blanket
+   "button { width: 100% }" rule to match their own Add to Cart/Buy buttons
+   in the same block, which otherwise stretches this into a huge full-width
+   bar (seen on Lerelle Beauty's theme) instead of sizing to its content. */
 .studyperks-badge {
   position: relative;
-  display: inline-flex;
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: max-content !important;
   align-items: center;
   gap: 6px;
   background: #fff;
@@ -173,10 +179,10 @@
 }
 
 .studyperks-email-prompt__row {
-  display: flex;
+  display: flex !important;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
+  width: 100%;
 }
 
 .studyperks-email-prompt__message {
@@ -256,6 +262,10 @@
   font-weight: 700;
 }
 
+/* flex-basis/box-sizing/!important guards — themes with their own global
+   input/button width rules (e.g. forcing 100% to match their Add to Cart
+   button) were squeezing this input to near-nothing while the submit
+   button ballooned to fill the leftover space. See note on .studyperks-badge. */
 .studyperks-email-input {
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -264,7 +274,10 @@
   font-size: 16px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   outline: none;
-  width: 160px;
+  box-sizing: border-box !important;
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0;
   color: #1f1f1f;
   background: #fff;
 }
@@ -283,7 +296,9 @@
   cursor: pointer;
   font-weight: 700;
   line-height: 1;
-  flex-shrink: 0;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
 }
 
 .studyperks-email-submit:hover {
