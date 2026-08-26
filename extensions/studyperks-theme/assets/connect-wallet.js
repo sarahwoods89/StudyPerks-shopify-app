@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const emailSubmit = document.getElementById("studyperks-email-submit");
   const emailMessage = document.getElementById("studyperks-email-message");
   const verifyLink = document.getElementById("studyperks-verify-link");
+  const accountMenu = document.getElementById("studyperks-account-menu");
+  const disconnectBtn = document.getElementById("studyperks-disconnect");
   const toast = document.getElementById("studyperks-toast");
   const wrapper = btn.closest(".studyperks-wrapper");
   if (!btn) return;
@@ -75,8 +77,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function setAppliedState() {
     verified = true;
     btn.classList.add("studyperks-badge--applied");
-    btn.disabled = true;
-    btn.setAttribute("aria-label", "StudyPerks — student discount applied");
+    // Stays clickable (not btn.disabled = true) so a verified student can
+    // still open the account menu below to disconnect — previously the only
+    // way to unstick a wrongly-cached "verified" state was DevTools.
+    btn.setAttribute("aria-label", "StudyPerks — student discount applied, click to manage");
     if (tooltip) {
       tooltip.classList.add("studyperks-tooltip--hidden");
       tooltip.style.visibility = "";
@@ -91,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.removeItem("studyperks_expiry");
     btn.classList.remove("studyperks-badge--applied");
     btn.disabled = false;
+    hideAccountMenu();
     if (tooltip) {
       tooltip.style.visibility = "";
       tooltip.classList.remove("studyperks-tooltip--hidden");
@@ -101,6 +106,30 @@ document.addEventListener("DOMContentLoaded", () => {
   // Called by Phantom disconnect/accountChanged — always clears regardless of verified state
   function resetState() {
     verified = false;
+    clearState();
+  }
+
+  function showAccountMenu() {
+    if (!accountMenu) return;
+    positionFloating(accountMenu, 220);
+    accountMenu.classList.add("studyperks-account-menu--visible");
+  }
+
+  function hideAccountMenu() {
+    accountMenu?.classList.remove("studyperks-account-menu--visible");
+  }
+
+  // Student-initiated disconnect — clears local state and tells Phantom to
+  // disconnect too, mirroring the equivalent option added to
+  // studyperks.me/dashboard, so a wrongly-cached "verified" state (e.g. a
+  // 7-day email session that's gone stale) no longer needs DevTools to fix.
+  async function disconnectStudent() {
+    verified = false;
+    try {
+      await window.solana?.disconnect?.();
+    } catch {
+      // Phantom not connected or user rejected — local state still clears below
+    }
     clearState();
   }
 
@@ -275,10 +304,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Recompute the tooltip's fixed position right before it becomes visible via CSS :hover
   btn.closest(".studyperks-wrapper")?.addEventListener("mouseenter", () => positionFloating(tooltip));
 
-  // Close email prompt on outside click
+  // Close email prompt / account menu on outside click
   document.addEventListener("click", (e) => {
     if (!btn.contains(e.target) && !emailPrompt?.contains(e.target)) {
       hideEmailPrompt();
+    }
+    if (!btn.contains(e.target) && !accountMenu?.contains(e.target)) {
+      hideAccountMenu();
     }
   });
 
@@ -295,8 +327,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  disconnectBtn?.addEventListener("click", () => {
+    hideAccountMenu();
+    disconnectStudent();
+  });
+
   // Badge click
   btn.addEventListener("click", async () => {
+    if (verified) {
+      showAccountMenu();
+      return;
+    }
+
     if (window.solana?.isPhantom) {
       btn.disabled = true;
       if (tooltip) { tooltip.style.visibility = ""; tooltip.textContent = "Connecting..."; }
