@@ -1,5 +1,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("studyperks-wallet-connect");
+  if (!btn) return;
+
+  const wrapper = btn.closest(".studyperks-wrapper");
   const tooltip = document.getElementById("studyperks-tooltip");
   const emailPrompt = document.getElementById("studyperks-email-prompt");
   const emailInput = document.getElementById("studyperks-email-input");
@@ -9,90 +12,77 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountMenu = document.getElementById("studyperks-account-menu");
   const disconnectBtn = document.getElementById("studyperks-disconnect");
   const toast = document.getElementById("studyperks-toast");
-  const wrapper = btn.closest(".studyperks-wrapper");
-  if (!btn) return;
+  const sessionBridge = document.getElementById("studyperks-session-bridge");
+  const verificationModal = document.getElementById("studyperks-verification-modal");
+  const verificationFrame = document.getElementById("studyperks-verification-frame");
+  const verificationClose = document.getElementById("studyperks-verification-close");
+  const verificationBackdrop = document.getElementById("studyperks-verification-backdrop");
+
+  let redemptionSession = null;
+  let bridgePoll = null;
+  let claiming = false;
+  let applied = localStorage.getItem("studyperks_applied") === "true"
+    && localStorage.getItem("studyperks_security_version") === "2";
 
   const defaultTooltipText = () =>
-    (tooltip && tooltip.dataset.defaultText) || "Student discount — click to claim";
+    tooltip?.dataset.defaultText || "Student discount — click to claim";
 
-  // Claims a fresh, single-use discount code for this shop instead of using
-  // a shared guessable word — see 2026-08-03 security fix. Returns null on
-  // any failure so callers can show an error rather than silently falling
-  // back to something insecure.
-  // identifier is { wallet } or { email } — the server independently
-  // re-verifies eligibility with it rather than trusting this call alone,
-  // since this endpoint can be reached directly, bypassing the widget
-  // entirely — see 2026-08-04 fix.
-  async function claimDiscountCode(identifier) {
-    const shop = wrapper?.dataset.shop;
-    if (!shop) return null;
-    try {
-      // text/plain avoids a CORS preflight (OPTIONS) round-trip — Remix's dev
-      // server intercepts OPTIONS before it reaches our route handler, so a
-      // "simple" request that skips preflight entirely is the reliable fix.
-      // The server still parses the body as JSON regardless of this header.
-      const res = await fetch("https://app.studyperks.me/discount-code", {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ shop, ...identifier }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.code || null;
-    } catch {
-      return null;
-    }
-  }
-
-  // Fixed-position popups need their coordinates computed from the button's
-  // actual screen position — themes with a sticky header often clip
-  // absolutely-positioned overflow, which cut these off before.
-  // widthEstimate keeps the popup fully on-screen when the icon sits near
-  // the right edge (e.g. a header with icons on the right on mobile) —
-  // without this the box, and the tappable arrow inside it, run off-screen.
-  function positionFloating(el, widthEstimate = 240) {
-    if (!el) return;
+  function positionFloating(element, widthEstimate = 240) {
+    if (!element) return;
     const rect = btn.getBoundingClientRect();
     const margin = 8;
-    const maxLeft = window.innerWidth - widthEstimate - margin;
-    const left = Math.min(rect.left, Math.max(margin, maxLeft));
-    el.style.top = `${Math.round(rect.bottom + 8)}px`;
-    el.style.left = `${Math.round(left)}px`;
+    const left = Math.min(rect.left, Math.max(margin, window.innerWidth - widthEstimate - margin));
+    element.style.top = `${Math.round(rect.bottom + 8)}px`;
+    element.style.left = `${Math.round(left)}px`;
   }
 
-  let verified = false;
+  function hideEmailPrompt() {
+    emailPrompt?.classList.remove("studyperks-email-prompt--visible");
+    wrapper?.classList.remove("studyperks-prompt-open");
+  }
 
-  // Hide tooltip while silently verifying — no flash of wrong state
-  if (tooltip) tooltip.style.visibility = "hidden";
+  function showEmailPrompt(message) {
+    if (!emailPrompt) return;
+    positionFloating(emailPrompt, 240);
+    emailPrompt.classList.add("studyperks-email-prompt--visible");
+    wrapper?.classList.add("studyperks-prompt-open");
+    if (message && emailMessage) {
+      emailMessage.textContent = message;
+      emailMessage.classList.add("studyperks-email-prompt__message--visible");
+      verifyLink?.classList.add("studyperks-email-prompt__link--visible");
+    }
+    emailInput?.focus();
+  }
 
-  // Shows the "you're verified" confirmation once per browser session,
-  // so it reassures without nagging on every page load.
-  function showVerifiedToast() {
-    if (!toast || sessionStorage.getItem("studyperks_toast_shown")) return;
-    sessionStorage.setItem("studyperks_toast_shown", "true");
-    toast.classList.add("studyperks-toast--visible");
-    setTimeout(() => toast.classList.remove("studyperks-toast--visible"), 5000);
+  function hideAccountMenu() {
+    accountMenu?.classList.remove("studyperks-account-menu--visible");
   }
 
   function setAppliedState() {
-    verified = true;
+    applied = true;
+    localStorage.setItem("studyperks_applied", "true");
+    localStorage.setItem("studyperks_security_version", "2");
     btn.classList.add("studyperks-badge--applied");
-    // Stays clickable (not btn.disabled = true) so a verified student can
-    // still open the account menu below to disconnect — previously the only
-    // way to unstick a wrongly-cached "verified" state was DevTools.
     btn.setAttribute("aria-label", "StudyPerks — student discount applied, click to manage");
+    hideEmailPrompt();
     if (tooltip) {
       tooltip.classList.add("studyperks-tooltip--hidden");
       tooltip.style.visibility = "";
     }
-    hideEmailPrompt();
-    showVerifiedToast();
+    if (toast && !sessionStorage.getItem("studyperks_toast_shown")) {
+      sessionStorage.setItem("studyperks_toast_shown", "true");
+      toast.classList.add("studyperks-toast--visible");
+      setTimeout(() => toast.classList.remove("studyperks-toast--visible"), 5000);
+    }
   }
 
   function clearState() {
+    applied = false;
+    redemptionSession = null;
     localStorage.removeItem("studyperks_applied");
     localStorage.removeItem("studyperks_wallet");
     localStorage.removeItem("studyperks_expiry");
+    localStorage.removeItem("studyperks_security_version");
     btn.classList.remove("studyperks-badge--applied");
     btn.disabled = false;
     hideAccountMenu();
@@ -103,271 +93,184 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Called by Phantom disconnect/accountChanged — always clears regardless of verified state
-  function resetState() {
-    verified = false;
-    clearState();
-  }
-
-  function showAccountMenu() {
-    if (!accountMenu) return;
-    positionFloating(accountMenu, 220);
-    accountMenu.classList.add("studyperks-account-menu--visible");
-  }
-
-  function hideAccountMenu() {
-    accountMenu?.classList.remove("studyperks-account-menu--visible");
-  }
-
-  // Student-initiated disconnect — clears local state and tells Phantom to
-  // disconnect too, mirroring the equivalent option added to
-  // studyperks.me/dashboard, so a wrongly-cached "verified" state (e.g. a
-  // 7-day email session that's gone stale) no longer needs DevTools to fix.
-  async function disconnectStudent() {
-    verified = false;
+  async function claimDiscountCode(session) {
+    const shop = wrapper?.dataset.shop;
+    if (!shop || !session) return null;
     try {
-      await window.solana?.disconnect?.();
-    } catch {
-      // Phantom not connected or user rejected — local state still clears below
-    }
-    clearState();
-  }
-
-  function showEmailPrompt() {
-    if (emailPrompt) {
-      positionFloating(emailPrompt, 220);
-      emailPrompt.classList.add("studyperks-email-prompt--visible");
-      btn.closest(".studyperks-wrapper")?.classList.add("studyperks-prompt-open");
-      emailInput?.focus();
-    }
-  }
-
-  function hideEmailPrompt() {
-    if (emailPrompt) emailPrompt.classList.remove("studyperks-email-prompt--visible");
-    btn.closest(".studyperks-wrapper")?.classList.remove("studyperks-prompt-open");
-  }
-
-  // Checks eligibility without redirecting — used for silent re-verification on load
-  async function silentlyVerify(walletAddress) {
-    try {
-      const res = await fetch("https://www.studyperks.me/api/check-token", {
+      const response = await fetch("https://app.studyperks.me/discount-code", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: walletAddress }),
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ shop, session }),
       });
-      const data = await res.json();
-      return data.eligible;
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data.code || null;
     } catch {
+      return null;
+    }
+  }
+
+  async function applyAuthenticatedDiscount(session) {
+    if (claiming) return false;
+    claiming = true;
+    btn.disabled = true;
+    if (tooltip) {
+      tooltip.style.visibility = "";
+      tooltip.textContent = "Verifying...";
+    }
+    const code = await claimDiscountCode(session);
+    if (!code) {
+      claiming = false;
+      clearState();
+      showEmailPrompt("Your login has expired. Verify your student email again to claim the discount.");
       return false;
     }
-  }
-
-  // First-time verification — confirms eligibility, claims a fresh single-use
-  // code, then applies it via redirect
-  async function checkTokenAndApply(walletAddress) {
-    const eligible = await silentlyVerify(walletAddress);
-    if (!eligible) return false;
-
-    const code = await claimDiscountCode({ wallet: walletAddress });
-    if (!code) {
-      if (tooltip) tooltip.textContent = "Something went wrong — please try again";
-      return "code_error";
-    }
-
-    localStorage.setItem("studyperks_applied", "true");
-    localStorage.setItem("studyperks_wallet", walletAddress);
+    setAppliedState();
     window.location.href = `/discount/${code}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
     return true;
   }
 
-  async function checkByEmail(email) {
-    emailSubmit.textContent = "...";
-    emailSubmit.disabled = true;
-    emailInput.disabled = true;
-
-    try {
-      const res = await fetch("https://www.studyperks.me/api/check-token-by-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json();
-
-      if (data.eligible) {
-        const code = await claimDiscountCode({ email });
-        if (!code) {
-          emailSubmit.textContent = "→";
-          emailSubmit.disabled = false;
-          emailInput.disabled = false;
-          if (emailMessage) {
-            emailMessage.textContent = "Something went wrong — please try again.";
-            emailMessage.classList.add("studyperks-email-prompt__message--visible");
-            setTimeout(() => {
-              emailMessage.classList.remove("studyperks-email-prompt__message--visible");
-            }, 5000);
-          }
-          return;
-        }
-
-        localStorage.setItem("studyperks_applied", "true");
-        // Email sessions expire after 7 days and require re-verification
-        localStorage.setItem("studyperks_expiry", String(Date.now() + 7 * 24 * 60 * 60 * 1000));
-        window.location.href = `/discount/${code}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-      } else {
-        emailInput.value = "";
-        emailSubmit.textContent = "→";
-        emailSubmit.disabled = false;
-        emailInput.disabled = false;
-        if (emailMessage) {
-          // Stays visible until the prompt itself is closed (outside click) or
-          // resubmitted — a 5s auto-hide didn't leave enough time to read the
-          // message and click the verify link.
-          emailMessage.textContent =
-            emailMessage.dataset.notEligibleText ||
-            "Go to StudyPerks to verify your student status — takes 30 seconds.";
-          emailMessage.classList.add("studyperks-email-prompt__message--visible");
-          verifyLink?.classList.add("studyperks-email-prompt__link--visible");
-        }
-      }
-    } catch (err) {
-      console.error("StudyPerks email check error:", err);
-      emailSubmit.textContent = "→";
-      emailSubmit.disabled = false;
-      emailInput.disabled = false;
-    }
+  function bytesToBase64(bytes) {
+    let binary = "";
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return btoa(binary);
   }
 
-  // ── Silent verification on every page load ───────────────────────────────────
-  // After 3 seconds with no wallet confirmation, fall back to email expiry or clear.
-  // This prevents a permanently-ticked badge from persisting on wrong/removed wallets.
-  const verifyTimeout = setTimeout(() => {
-    if (verified) return;
-    const expiry = localStorage.getItem("studyperks_expiry");
-    if (expiry && Date.now() < parseInt(expiry, 10)) {
-      setAppliedState();
-    } else {
-      clearState();
-    }
-  }, 3000);
-
-  // Session bridge: fires if the student is logged into studyperks.me
-  window.addEventListener("message", async (event) => {
-    if (event.origin !== "https://www.studyperks.me") return;
-    if (!event.data || event.data.type !== "studyperks_session") return;
-    if (verified) return;
-    clearTimeout(verifyTimeout);
-    if (event.data.wallet) {
-      const eligible = await silentlyVerify(event.data.wallet);
-      if (eligible) {
-        localStorage.setItem("studyperks_wallet", event.data.wallet);
-        localStorage.setItem("studyperks_applied", "true");
-        setAppliedState();
-      } else {
-        clearState();
-      }
-    } else {
-      // Bridge responded but no wallet — honour email expiry if present
-      const expiry = localStorage.getItem("studyperks_expiry");
-      if (expiry && Date.now() < parseInt(expiry, 10)) {
-        setAppliedState();
-      } else {
-        clearState();
-      }
-    }
-  });
-
-  // Silently re-verify wallet on load.
-  // Prefer the live Phantom public key; fall back to the stored address so
-  // verification works even when Phantom is installed but not actively connected.
-  const walletToCheck = window.solana?.publicKey?.toString()
-    || localStorage.getItem("studyperks_wallet");
-  if (walletToCheck) {
-    silentlyVerify(walletToCheck).then((eligible) => {
-      if (verified) return;
-      clearTimeout(verifyTimeout);
-      if (eligible) {
-        localStorage.setItem("studyperks_wallet", walletToCheck);
-        localStorage.setItem("studyperks_applied", "true");
-        setAppliedState();
-      } else {
-        clearState();
-      }
+  async function createWalletSession() {
+    if (!window.solana?.isPhantom || !window.solana.signMessage) return null;
+    const shop = wrapper?.dataset.shop;
+    const connection = await window.solana.connect();
+    const wallet = connection.publicKey.toString();
+    const challengeResponse = await fetch("https://www.studyperks.me/api/wallet-challenge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet, shop }),
     });
+    if (!challengeResponse.ok) return null;
+    const { message, challenge } = await challengeResponse.json();
+    const signed = await window.solana.signMessage(new TextEncoder().encode(message), "utf8");
+    const verifyResponse = await fetch("https://www.studyperks.me/api/wallet-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet, shop, challenge, signature: bytesToBase64(signed.signature) }),
+    });
+    if (!verifyResponse.ok) return null;
+    const result = await verifyResponse.json();
+    return result.verified === true ? result.session : null;
   }
 
-  // Phantom disconnect/account switch → always reset
-  if (window.solana) {
-    window.solana.on("disconnect", resetState);
-    window.solana.on("accountChanged", resetState);
-  }
-
-  // Recompute the tooltip's fixed position right before it becomes visible via CSS :hover
-  btn.closest(".studyperks-wrapper")?.addEventListener("mouseenter", () => positionFloating(tooltip));
-
-  // Close email prompt / account menu on outside click
-  document.addEventListener("click", (e) => {
-    if (!btn.contains(e.target) && !emailPrompt?.contains(e.target)) {
-      hideEmailPrompt();
-    }
-    if (!btn.contains(e.target) && !accountMenu?.contains(e.target)) {
-      hideAccountMenu();
-    }
-  });
-
-  // Email handlers
-  emailSubmit?.addEventListener("click", () => {
-    const email = emailInput?.value?.trim();
-    if (email) checkByEmail(email);
-  });
-
-  emailInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const email = emailInput.value.trim();
-      if (email) checkByEmail(email);
-    }
-  });
-
-  disconnectBtn?.addEventListener("click", () => {
-    hideAccountMenu();
-    disconnectStudent();
-  });
-
-  // Badge click
-  btn.addEventListener("click", async () => {
-    if (verified) {
-      showAccountMenu();
+  // The iframe sends the signed 30-minute credential produced after Privy OTP
+  // verification. The wallet/email beside it is deliberately ignored.
+  window.addEventListener("message", (event) => {
+    if (event.origin !== "https://www.studyperks.me") return;
+    if (event.data?.type === "studyperks_verification_complete"
+      && verificationFrame && event.source === verificationFrame.contentWindow) {
+      refreshSessionBridge();
       return;
     }
+    if (sessionBridge && event.source !== sessionBridge.contentWindow) return;
+    if (!event.data || event.data.type !== "studyperks_session") return;
+    redemptionSession = typeof event.data.session === "string" ? event.data.session : null;
+    if (applied) setAppliedState();
+    if (redemptionSession && verificationModal?.classList.contains("studyperks-verification-modal--visible")) {
+      closeVerificationModal();
+      applyAuthenticatedDiscount(redemptionSession);
+    }
+  });
 
+  // The bridge may have loaded before the student completed OTP in the new
+  // tab. Refresh it when they return so it can deliver the new session.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && sessionBridge && !redemptionSession) {
+      sessionBridge.src = `https://www.studyperks.me/session-bridge?t=${Date.now()}`;
+    }
+  });
+
+  function refreshSessionBridge() {
+    if (sessionBridge) sessionBridge.src = `https://www.studyperks.me/session-bridge?t=${Date.now()}`;
+  }
+
+  function closeVerificationModal() {
+    verificationModal?.classList.remove("studyperks-verification-modal--visible");
+    verificationModal?.setAttribute("aria-hidden", "true");
+    document.documentElement.style.removeProperty("overflow");
+    if (bridgePoll) clearInterval(bridgePoll);
+    bridgePoll = null;
+  }
+
+  function startEmailVerification() {
+    const email = emailInput?.value?.trim();
+    const url = new URL(verificationFrame?.dataset.src || "https://www.studyperks.me/get-Verified?embed=shopify");
+    if (email) url.searchParams.set("email", email);
+    if (emailMessage) {
+      emailMessage.textContent = "You must receive and enter the Privy code before a discount can be issued.";
+      emailMessage.classList.add("studyperks-email-prompt__message--visible");
+    }
+    verifyLink?.classList.add("studyperks-email-prompt__link--visible");
+    hideEmailPrompt();
+    if (!verificationFrame || !verificationModal) return;
+    verificationFrame.src = url.toString();
+    verificationModal.classList.add("studyperks-verification-modal--visible");
+    verificationModal.setAttribute("aria-hidden", "false");
+    document.documentElement.style.overflow = "hidden";
+    verificationClose?.focus();
+    if (bridgePoll) clearInterval(bridgePoll);
+    bridgePoll = setInterval(refreshSessionBridge, 1500);
+  }
+
+  emailSubmit?.addEventListener("click", startEmailVerification);
+  verifyLink?.addEventListener("click", (event) => {
+    event.preventDefault();
+    startEmailVerification();
+  });
+  emailInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") startEmailVerification();
+  });
+  verificationClose?.addEventListener("click", closeVerificationModal);
+  verificationBackdrop?.addEventListener("click", closeVerificationModal);
+
+  disconnectBtn?.addEventListener("click", async () => {
+    try { await window.solana?.disconnect?.(); } catch { /* local state still clears */ }
+    clearState();
+  });
+  window.solana?.on?.("disconnect", clearState);
+  window.solana?.on?.("accountChanged", clearState);
+
+  document.addEventListener("click", (event) => {
+    if (!btn.contains(event.target) && !emailPrompt?.contains(event.target)) hideEmailPrompt();
+    if (!btn.contains(event.target) && !accountMenu?.contains(event.target)) hideAccountMenu();
+  });
+  wrapper?.addEventListener("mouseenter", () => positionFloating(tooltip));
+
+  if (applied) setAppliedState();
+  else {
+    clearState();
+    if (tooltip) tooltip.style.visibility = "";
+  }
+
+  btn.addEventListener("click", async () => {
+    if (applied) {
+      positionFloating(accountMenu, 220);
+      accountMenu?.classList.add("studyperks-account-menu--visible");
+      return;
+    }
+    if (redemptionSession) {
+      await applyAuthenticatedDiscount(redemptionSession);
+      return;
+    }
     if (window.solana?.isPhantom) {
       btn.disabled = true;
-      if (tooltip) { tooltip.style.visibility = ""; tooltip.textContent = "Connecting..."; }
       try {
-        const resp = await window.solana.connect();
-        const walletAddress = resp.publicKey.toString();
-        if (tooltip) tooltip.textContent = "Verifying...";
-        const eligible = await checkTokenAndApply(walletAddress);
-        if (eligible === false) {
-          if (tooltip) tooltip.textContent = "No StudyPerks token found";
-          setTimeout(() => {
-            if (tooltip) tooltip.textContent = defaultTooltipText();
-            btn.disabled = false;
-          }, 3000);
-        } else if (eligible === "code_error") {
-          // Tooltip text already set inside checkTokenAndApply
-          setTimeout(() => {
-            if (tooltip) tooltip.textContent = defaultTooltipText();
-            btn.disabled = false;
-          }, 3000);
+        redemptionSession = await createWalletSession();
+        if (redemptionSession) {
+          await applyAuthenticatedDiscount(redemptionSession);
+          return;
         }
-      } catch (err) {
-        console.error("StudyPerks error:", err);
-        if (tooltip) tooltip.textContent = defaultTooltipText();
-        btn.disabled = false;
+      } catch (error) {
+        console.error("StudyPerks wallet verification failed:", error);
       }
-      return;
+      btn.disabled = false;
     }
-
-    showEmailPrompt();
+    showEmailPrompt("Verify your student email with Privy, then return here to claim your discount.");
   });
 });

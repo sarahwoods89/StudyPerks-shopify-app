@@ -69,6 +69,19 @@
     <span>You're verified — your student discount is applied automatically. Happy shopping!</span>
   </div>
 
+  <div class="studyperks-verification-modal" id="studyperks-verification-modal" aria-hidden="true">
+    <button type="button" class="studyperks-verification-modal__backdrop" id="studyperks-verification-backdrop" aria-label="Close verification"></button>
+    <div class="studyperks-verification-modal__dialog" role="dialog" aria-modal="true" aria-label="Verify your student status">
+      <button type="button" class="studyperks-verification-modal__close" id="studyperks-verification-close" aria-label="Close verification">&#10005;</button>
+      <iframe
+        id="studyperks-verification-frame"
+        data-src="https://www.studyperks.me/get-Verified?embed=shopify&shop={{ shop.permanent_domain | url_encode }}"
+        title="StudyPerks student verification"
+        allow="publickey-credentials-get; publickey-credentials-create"
+      ></iframe>
+    </div>
+  </div>
+
 </div>
 
 <script src="{{ 'connect-wallet.js' | asset_url }}" defer></script>
