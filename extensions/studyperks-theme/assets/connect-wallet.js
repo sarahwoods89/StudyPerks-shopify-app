@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const phantomLink = document.getElementById("studyperks-phantom-link");
   const accountMenu = document.getElementById("studyperks-account-menu");
   const disconnectBtn = document.getElementById("studyperks-disconnect");
+  const inlineDisconnectBtn = document.getElementById("studyperks-disconnect-inline");
   const toast = document.getElementById("studyperks-toast");
   let applied = localStorage.getItem("studyperks_applied") === "true"
     && localStorage.getItem("studyperks_security_version") === "3";
@@ -38,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
       emailMessage.textContent = message;
       emailMessage.classList.add("studyperks-email-prompt__message--visible");
     }
+    verifyLink?.classList.add("studyperks-email-prompt__link--visible");
     emailInput?.focus();
   }
   function setAppliedState() {
@@ -47,6 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("studyperks_security_version", "3");
     btn.disabled = false;
     btn.classList.add("studyperks-badge--applied");
+    wrapper?.classList.add("studyperks-wrapper--applied");
     btn.setAttribute("aria-label", "StudyPerks — student discount applied, click to manage");
     hideEmailPrompt();
     if (tooltip) tooltip.classList.add("studyperks-tooltip--hidden");
@@ -64,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.removeItem("studyperks_wallet");
     btn.disabled = false;
     btn.classList.remove("studyperks-badge--applied");
+    wrapper?.classList.remove("studyperks-wrapper--applied");
     accountMenu?.classList.remove("studyperks-account-menu--visible");
     if (tooltip) {
       tooltip.classList.remove("studyperks-tooltip--hidden");
@@ -180,11 +184,8 @@ document.addEventListener("DOMContentLoaded", () => {
   emailInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") openStudyPerks(emailInput.value.trim());
   });
-  verifyLink?.addEventListener("click", (event) => {
-    event.preventDefault();
-    openStudyPerks(emailInput?.value?.trim());
-  });
   disconnectBtn?.addEventListener("click", () => clearState());
+  inlineDisconnectBtn?.addEventListener("click", () => clearState());
   document.addEventListener("click", (event) => {
     if (!btn.contains(event.target) && !emailPrompt?.contains(event.target)) hideEmailPrompt();
     if (!btn.contains(event.target) && !accountMenu?.contains(event.target)) accountMenu?.classList.remove("studyperks-account-menu--visible");

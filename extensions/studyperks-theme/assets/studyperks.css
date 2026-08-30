@@ -203,6 +203,26 @@
   color: #374151;
 }
 
+.studyperks-inline-disconnect {
+  display: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: #6b7280;
+  font: 600 11px/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.studyperks-wrapper--applied .studyperks-inline-disconnect {
+  display: block;
+}
+
+.studyperks-inline-disconnect:hover {
+  color: #374151;
+}
+
 .studyperks-account-menu::before {
   content: '';
   position: absolute;
