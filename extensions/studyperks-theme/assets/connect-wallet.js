@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const emailSubmit = document.getElementById("studyperks-email-submit");
   const emailMessage = document.getElementById("studyperks-email-message");
   const verifyLink = document.getElementById("studyperks-verify-link");
+  const phantomLink = document.getElementById("studyperks-phantom-link");
   const accountMenu = document.getElementById("studyperks-account-menu");
   const disconnectBtn = document.getElementById("studyperks-disconnect");
   const toast = document.getElementById("studyperks-toast");
@@ -164,6 +165,15 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   emailSubmit?.addEventListener("click", () => openStudyPerks(emailInput?.value?.trim()));
+  if (phantomLink && window.solana?.isPhantom) phantomLink.style.display = "block";
+  phantomLink?.addEventListener("click", async () => {
+    busy = true;
+    try {
+      const authorization = await createPhantomAuthorization();
+      if (authorization) await applyAuthorization(authorization);
+      else { busy = false; showEmailPrompt("Phantom connection was not completed."); }
+    } catch { busy = false; showEmailPrompt("Phantom connection was not completed."); }
+  });
   emailInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") openStudyPerks(emailInput.value.trim());
   });
@@ -187,23 +197,10 @@ document.addEventListener("DOMContentLoaded", () => {
       accountMenu?.classList.add("studyperks-account-menu--visible");
       return;
     }
-    if (window.solana?.isPhantom) {
-      busy = true;
-      btn.disabled = true;
-      try {
-        const authorization = await createPhantomAuthorization();
-        busy = false;
-        if (authorization) {
-          await applyAuthorization(authorization);
-          return;
-        }
-      } catch (error) {
-        console.error("StudyPerks wallet authorization failed:", error);
-      }
-      clearState();
-    }
-    // Existing Privy sessions complete and close immediately. If Privy needs
-    // authentication, the same window displays the email and six OTP boxes.
-    openStudyPerks();
+    // Start with the small inline prompt so students understand what is
+    // happening. Submitting it opens the secure StudyPerks window. The server
+    // still requires a Privy session or Phantom signature; email alone never
+    // grants a discount.
+    showEmailPrompt("We’ll securely check your student pass.");
   });
 });
