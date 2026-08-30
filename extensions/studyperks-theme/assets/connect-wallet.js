@@ -127,8 +127,8 @@ document.addEventListener("DOMContentLoaded", () => {
     busy = true;
     // Open synchronously on the click so browser popup protection does not
     // block the secure first-party Privy window.
-    const width = 440;
-    const height = 650;
+    const width = 390;
+    const height = 300;
     const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
     const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
     const popup = window.open("about:blank", "studyperks-connect", `popup=yes,width=${width},height=${height},left=${left},top=${top}`);
