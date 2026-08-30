@@ -161,6 +161,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.origin !== "https://www.studyperks.me") return;
     if (event.data?.type !== "studyperks_redemption_authorization") return;
     if (typeof event.data.authorization !== "string") return;
+    // Opening the secure popup marks the badge busy. The returned grant is
+    // the completion of that operation, so release the lock before claiming.
+    busy = false;
     applyAuthorization(event.data.authorization);
   });
 
