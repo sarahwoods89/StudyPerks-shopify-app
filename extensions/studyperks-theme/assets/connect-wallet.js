@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("studyperks-wallet-connect");
   if (!btn) return;
-
   const wrapper = btn.closest(".studyperks-wrapper");
   const tooltip = document.getElementById("studyperks-tooltip");
   const emailPrompt = document.getElementById("studyperks-email-prompt");
@@ -12,122 +11,88 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountMenu = document.getElementById("studyperks-account-menu");
   const disconnectBtn = document.getElementById("studyperks-disconnect");
   const toast = document.getElementById("studyperks-toast");
-  const sessionBridge = document.getElementById("studyperks-session-bridge");
-  const verificationModal = document.getElementById("studyperks-verification-modal");
-  const verificationFrame = document.getElementById("studyperks-verification-frame");
-  const verificationClose = document.getElementById("studyperks-verification-close");
-  const verificationBackdrop = document.getElementById("studyperks-verification-backdrop");
-
-  let redemptionSession = null;
-  let bridgePoll = null;
-  let claiming = false;
   let applied = localStorage.getItem("studyperks_applied") === "true"
-    && localStorage.getItem("studyperks_security_version") === "2";
+    && localStorage.getItem("studyperks_security_version") === "3";
+  let busy = false;
 
-  const defaultTooltipText = () =>
-    tooltip?.dataset.defaultText || "Student discount — click to claim";
+  const shop = wrapper?.dataset.shop;
+  const defaultTooltipText = () => tooltip?.dataset.defaultText || "Student discount — click to claim";
 
-  function positionFloating(element, widthEstimate = 240) {
+  function positionFloating(element, width = 240) {
     if (!element) return;
     const rect = btn.getBoundingClientRect();
-    const margin = 8;
-    const left = Math.min(rect.left, Math.max(margin, window.innerWidth - widthEstimate - margin));
+    const left = Math.min(rect.left, Math.max(8, window.innerWidth - width - 8));
     element.style.top = `${Math.round(rect.bottom + 8)}px`;
     element.style.left = `${Math.round(left)}px`;
   }
-
   function hideEmailPrompt() {
     emailPrompt?.classList.remove("studyperks-email-prompt--visible");
     wrapper?.classList.remove("studyperks-prompt-open");
   }
-
   function showEmailPrompt(message) {
-    if (!emailPrompt) return;
-    positionFloating(emailPrompt, 240);
-    emailPrompt.classList.add("studyperks-email-prompt--visible");
+    positionFloating(emailPrompt);
+    emailPrompt?.classList.add("studyperks-email-prompt--visible");
     wrapper?.classList.add("studyperks-prompt-open");
     if (message && emailMessage) {
       emailMessage.textContent = message;
       emailMessage.classList.add("studyperks-email-prompt__message--visible");
-      verifyLink?.classList.add("studyperks-email-prompt__link--visible");
     }
     emailInput?.focus();
   }
-
-  function hideAccountMenu() {
-    accountMenu?.classList.remove("studyperks-account-menu--visible");
-  }
-
   function setAppliedState() {
     applied = true;
+    busy = false;
     localStorage.setItem("studyperks_applied", "true");
-    localStorage.setItem("studyperks_security_version", "2");
+    localStorage.setItem("studyperks_security_version", "3");
+    btn.disabled = false;
     btn.classList.add("studyperks-badge--applied");
     btn.setAttribute("aria-label", "StudyPerks — student discount applied, click to manage");
     hideEmailPrompt();
-    if (tooltip) {
-      tooltip.classList.add("studyperks-tooltip--hidden");
-      tooltip.style.visibility = "";
-    }
+    if (tooltip) tooltip.classList.add("studyperks-tooltip--hidden");
     if (toast && !sessionStorage.getItem("studyperks_toast_shown")) {
       sessionStorage.setItem("studyperks_toast_shown", "true");
       toast.classList.add("studyperks-toast--visible");
       setTimeout(() => toast.classList.remove("studyperks-toast--visible"), 5000);
     }
   }
-
   function clearState() {
     applied = false;
-    redemptionSession = null;
+    busy = false;
     localStorage.removeItem("studyperks_applied");
-    localStorage.removeItem("studyperks_wallet");
-    localStorage.removeItem("studyperks_expiry");
     localStorage.removeItem("studyperks_security_version");
-    btn.classList.remove("studyperks-badge--applied");
+    localStorage.removeItem("studyperks_wallet");
     btn.disabled = false;
-    hideAccountMenu();
+    btn.classList.remove("studyperks-badge--applied");
+    accountMenu?.classList.remove("studyperks-account-menu--visible");
     if (tooltip) {
-      tooltip.style.visibility = "";
       tooltip.classList.remove("studyperks-tooltip--hidden");
       tooltip.textContent = defaultTooltipText();
     }
   }
 
-  async function claimDiscountCode(session) {
-    const shop = wrapper?.dataset.shop;
-    if (!shop || !session) return null;
-    try {
-      const response = await fetch("https://app.studyperks.me/discount-code", {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ shop, session }),
-      });
-      if (!response.ok) return null;
-      const data = await response.json();
-      return data.code || null;
-    } catch {
-      return null;
-    }
+  async function claimDiscountCode(authorization) {
+    if (!shop || !authorization) return null;
+    const response = await fetch("https://app.studyperks.me/discount-code", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ shop, authorization }),
+    });
+    if (!response.ok) return null;
+    return (await response.json()).code || null;
   }
-
-  async function applyAuthenticatedDiscount(session) {
-    if (claiming) return false;
-    claiming = true;
+  async function applyAuthorization(authorization) {
+    if (busy) return;
+    busy = true;
     btn.disabled = true;
-    if (tooltip) {
-      tooltip.style.visibility = "";
-      tooltip.textContent = "Verifying...";
-    }
-    const code = await claimDiscountCode(session);
+    if (tooltip) tooltip.textContent = "Applying discount...";
+    const code = await claimDiscountCode(authorization);
     if (!code) {
-      claiming = false;
       clearState();
-      showEmailPrompt("Your login has expired. Verify your student email again to claim the discount.");
-      return false;
+      showEmailPrompt("We couldn't verify this request. Please try again.");
+      return;
     }
     setAppliedState();
     window.location.href = `/discount/${code}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-    return true;
   }
 
   function bytesToBase64(bytes) {
@@ -136,9 +101,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return btoa(binary);
   }
 
-  async function createWalletSession() {
+  async function createPhantomAuthorization() {
     if (!window.solana?.isPhantom || !window.solana.signMessage) return null;
-    const shop = wrapper?.dataset.shop;
     const connection = await window.solana.connect();
     const wallet = connection.publicKey.toString();
     const challengeResponse = await fetch("https://www.studyperks.me/api/wallet-challenge", {
@@ -155,98 +119,67 @@ document.addEventListener("DOMContentLoaded", () => {
       body: JSON.stringify({ wallet, shop, challenge, signature: bytesToBase64(signed.signature) }),
     });
     if (!verifyResponse.ok) return null;
-    const result = await verifyResponse.json();
-    return result.verified === true ? result.session : null;
+    return (await verifyResponse.json()).session || null;
   }
 
-  // The iframe sends the signed 30-minute credential produced after Privy OTP
-  // verification. The wallet/email beside it is deliberately ignored.
-  window.addEventListener("message", (event) => {
-    if (event.origin !== "https://www.studyperks.me") return;
-    if (event.data?.type === "studyperks_verification_complete"
-      && verificationFrame && event.source === verificationFrame.contentWindow) {
-      refreshSessionBridge();
+  async function openStudyPerks(email = "") {
+    if (busy || !shop) return;
+    busy = true;
+    // Open synchronously on the click so browser popup protection does not
+    // block the secure first-party Privy window.
+    const width = 440;
+    const height = 650;
+    const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+    const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+    const popup = window.open("about:blank", "studyperks-connect", `popup=yes,width=${width},height=${height},left=${left},top=${top}`);
+    if (!popup) {
+      busy = false;
+      showEmailPrompt("Please allow the StudyPerks sign-in window to continue.");
       return;
     }
-    if (sessionBridge && event.source !== sessionBridge.contentWindow) return;
-    if (!event.data || event.data.type !== "studyperks_session") return;
-    redemptionSession = typeof event.data.session === "string" ? event.data.session : null;
-    if (applied) setAppliedState();
-    if (redemptionSession && verificationModal?.classList.contains("studyperks-verification-modal--visible")) {
-      closeVerificationModal();
-      applyAuthenticatedDiscount(redemptionSession);
+    try {
+      const response = await fetch("https://app.studyperks.me/redemption-start", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify({ shop, origin: window.location.origin }),
+      });
+      if (!response.ok) throw new Error("start failed");
+      const data = await response.json();
+      const url = new URL(data.url);
+      if (email) url.searchParams.set("email", email);
+      popup.location.replace(url.toString());
+      hideEmailPrompt();
+    } catch {
+      popup.close();
+      busy = false;
+      showEmailPrompt("StudyPerks could not start securely. Please try again.");
     }
+  }
+
+  window.addEventListener("message", (event) => {
+    if (event.origin !== "https://www.studyperks.me") return;
+    if (event.data?.type !== "studyperks_redemption_authorization") return;
+    if (typeof event.data.authorization !== "string") return;
+    applyAuthorization(event.data.authorization);
   });
 
-  // The bridge may have loaded before the student completed OTP in the new
-  // tab. Refresh it when they return so it can deliver the new session.
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && sessionBridge && !redemptionSession) {
-      sessionBridge.src = `https://www.studyperks.me/session-bridge?t=${Date.now()}`;
-    }
+  emailSubmit?.addEventListener("click", () => openStudyPerks(emailInput?.value?.trim()));
+  emailInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") openStudyPerks(emailInput.value.trim());
   });
-
-  function refreshSessionBridge() {
-    if (sessionBridge) sessionBridge.src = `https://www.studyperks.me/session-bridge?t=${Date.now()}`;
-  }
-
-  function closeVerificationModal() {
-    verificationModal?.classList.remove("studyperks-verification-modal--visible");
-    verificationModal?.setAttribute("aria-hidden", "true");
-    document.documentElement.style.removeProperty("overflow");
-    if (bridgePoll) clearInterval(bridgePoll);
-    bridgePoll = null;
-  }
-
-  function startEmailVerification() {
-    const email = emailInput?.value?.trim();
-    const url = new URL(verificationFrame?.dataset.src || "https://www.studyperks.me/get-Verified?embed=shopify");
-    if (email) url.searchParams.set("email", email);
-    if (emailMessage) {
-      emailMessage.textContent = "You must receive and enter the Privy code before a discount can be issued.";
-      emailMessage.classList.add("studyperks-email-prompt__message--visible");
-    }
-    verifyLink?.classList.add("studyperks-email-prompt__link--visible");
-    hideEmailPrompt();
-    if (!verificationFrame || !verificationModal) return;
-    verificationFrame.src = url.toString();
-    verificationModal.classList.add("studyperks-verification-modal--visible");
-    verificationModal.setAttribute("aria-hidden", "false");
-    document.documentElement.style.overflow = "hidden";
-    verificationClose?.focus();
-    if (bridgePoll) clearInterval(bridgePoll);
-    bridgePoll = setInterval(refreshSessionBridge, 1500);
-  }
-
-  emailSubmit?.addEventListener("click", startEmailVerification);
   verifyLink?.addEventListener("click", (event) => {
     event.preventDefault();
-    startEmailVerification();
+    openStudyPerks(emailInput?.value?.trim());
   });
-  emailInput?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") startEmailVerification();
-  });
-  verificationClose?.addEventListener("click", closeVerificationModal);
-  verificationBackdrop?.addEventListener("click", closeVerificationModal);
-
-  disconnectBtn?.addEventListener("click", async () => {
-    try { await window.solana?.disconnect?.(); } catch { /* local state still clears */ }
-    clearState();
-  });
-  window.solana?.on?.("disconnect", clearState);
-  window.solana?.on?.("accountChanged", clearState);
-
+  disconnectBtn?.addEventListener("click", () => clearState());
   document.addEventListener("click", (event) => {
     if (!btn.contains(event.target) && !emailPrompt?.contains(event.target)) hideEmailPrompt();
-    if (!btn.contains(event.target) && !accountMenu?.contains(event.target)) hideAccountMenu();
+    if (!btn.contains(event.target) && !accountMenu?.contains(event.target)) accountMenu?.classList.remove("studyperks-account-menu--visible");
   });
   wrapper?.addEventListener("mouseenter", () => positionFloating(tooltip));
 
   if (applied) setAppliedState();
-  else {
-    clearState();
-    if (tooltip) tooltip.style.visibility = "";
-  }
+  else clearState();
 
   btn.addEventListener("click", async () => {
     if (applied) {
@@ -254,23 +187,23 @@ document.addEventListener("DOMContentLoaded", () => {
       accountMenu?.classList.add("studyperks-account-menu--visible");
       return;
     }
-    if (redemptionSession) {
-      await applyAuthenticatedDiscount(redemptionSession);
-      return;
-    }
     if (window.solana?.isPhantom) {
+      busy = true;
       btn.disabled = true;
       try {
-        redemptionSession = await createWalletSession();
-        if (redemptionSession) {
-          await applyAuthenticatedDiscount(redemptionSession);
+        const authorization = await createPhantomAuthorization();
+        busy = false;
+        if (authorization) {
+          await applyAuthorization(authorization);
           return;
         }
       } catch (error) {
-        console.error("StudyPerks wallet verification failed:", error);
+        console.error("StudyPerks wallet authorization failed:", error);
       }
-      btn.disabled = false;
+      clearState();
     }
-    showEmailPrompt("Verify your student email with Privy, then return here to claim your discount.");
+    // Existing Privy sessions complete and close immediately. If Privy needs
+    // authentication, the same window displays the email and six OTP boxes.
+    openStudyPerks();
   });
 });

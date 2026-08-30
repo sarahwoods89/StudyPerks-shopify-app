@@ -13,19 +13,21 @@ const SHOP_PATTERN = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 // Public emails and wallet addresses are identifiers, not proof of control.
 // StudyPerks validates the short-lived signed session and checks the token
 // before this app issues a discount code.
-async function verifyRedemptionSession({ session, shop }) {
+async function verifyRedemptionAuthorization({ authorization, shop }) {
   try {
     const res = await fetch("https://www.studyperks.me/api/verify-redemption-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session, shop }),
+      body: JSON.stringify({ authorization, shop }),
     });
     if (!res.ok) return false;
     const data = await res.json();
-    return data.verified === true && data.eligible === true;
+    return data.verified === true && data.eligible === true && typeof data.jti === "string"
+      ? { jti: data.jti }
+      : null;
   } catch (err) {
     console.error("StudyPerks session verification failed:", err);
-    return false;
+    return null;
   }
 }
 
@@ -41,11 +43,11 @@ export async function action({ request }) {
     return json({ error: "Method not allowed" }, { status: 405, headers: CORS_HEADERS });
   }
 
-  let shop, session;
+  let shop, authorization;
   try {
     const body = await request.json();
     shop = body?.shop;
-    session = body?.session;
+    authorization = body?.authorization;
   } catch {
     return json({ error: "Invalid request body" }, { status: 400, headers: CORS_HEADERS });
   }
@@ -53,22 +55,27 @@ export async function action({ request }) {
   if (typeof shop !== "string" || !SHOP_PATTERN.test(shop)) {
     return json({ error: "Missing or invalid shop" }, { status: 400, headers: CORS_HEADERS });
   }
-  if (typeof session !== "string" || session.length < 20 || session.length > 4096) {
-    return json({ error: "A valid StudyPerks session is required" }, { status: 401, headers: CORS_HEADERS });
+  if (typeof authorization !== "string" || authorization.length < 20 || authorization.length > 4096) {
+    return json({ error: "A valid StudyPerks authorization is required" }, { status: 401, headers: CORS_HEADERS });
   }
 
   const config = await db.discountConfig.findUnique({ where: { shop } });
   if (!config) {
     return json({ error: "StudyPerks is not configured for this shop" }, { status: 404, headers: CORS_HEADERS });
   }
-  if (!(await verifyRedemptionSession({ session, shop }))) {
-    return json({ error: "Invalid, expired, or ineligible StudyPerks session" }, { status: 403, headers: CORS_HEADERS });
+  const verified = await verifyRedemptionAuthorization({ authorization, shop });
+  if (!verified) {
+    return json({ error: "Invalid, expired, or ineligible StudyPerks authorization" }, { status: 403, headers: CORS_HEADERS });
   }
 
   try {
+    await db.redemptionAuthorization.create({ data: { jti: verified.jti, shop } });
     const code = await claimCode(shop);
     return json({ code }, { headers: CORS_HEADERS });
   } catch (err) {
+    if (err?.code === "P2002") {
+      return json({ error: "This StudyPerks authorization has already been used" }, { status: 409, headers: CORS_HEADERS });
+    }
     console.error(`discount-code claim error for ${shop}:`, err);
     return json({ error: "Could not issue a discount code" }, { status: 500, headers: CORS_HEADERS });
   }

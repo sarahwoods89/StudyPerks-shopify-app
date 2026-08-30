@@ -2,15 +2,6 @@
   {% if block.settings.title_text != blank %}
     <p class="studyperks-badge__title"{% if block.settings.title_background != blank %} style="background-color: {{ block.settings.title_background }};"{% endif %}>{{ block.settings.title_text }}</p>
   {% endif %}
-  <iframe
-    id="studyperks-session-bridge"
-    src="https://www.studyperks.me/session-bridge"
-    style="display:none"
-    width="0"
-    height="0"
-    title=""
-    aria-hidden="true"
-  ></iframe>
   <button
     id="studyperks-wallet-connect"
     class="studyperks-badge{% if block.settings.compact_style %} studyperks-badge--compact{% endif %}"
@@ -67,19 +58,6 @@
   <div class="studyperks-toast" id="studyperks-toast" role="status" aria-live="polite">
     <span class="studyperks-toast__icon" aria-hidden="true">&#10003;</span>
     <span>You're verified — your student discount is applied automatically. Happy shopping!</span>
-  </div>
-
-  <div class="studyperks-verification-modal" id="studyperks-verification-modal" aria-hidden="true">
-    <button type="button" class="studyperks-verification-modal__backdrop" id="studyperks-verification-backdrop" aria-label="Close verification"></button>
-    <div class="studyperks-verification-modal__dialog" role="dialog" aria-modal="true" aria-label="Verify your student status">
-      <button type="button" class="studyperks-verification-modal__close" id="studyperks-verification-close" aria-label="Close verification">&#10005;</button>
-      <iframe
-        id="studyperks-verification-frame"
-        data-src="https://www.studyperks.me/get-Verified?embed=shopify&shop={{ shop.permanent_domain | url_encode }}"
-        title="StudyPerks student verification"
-        allow="publickey-credentials-get; publickey-credentials-create"
-      ></iframe>
-    </div>
   </div>
 
 </div>

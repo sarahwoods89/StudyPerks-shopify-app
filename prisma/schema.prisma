@@ -45,6 +45,29 @@ model StudentDiscountCode {
   @@index([shop, issuedAt])
 }
 
+// OAuth-style handoff from an installed storefront to StudyPerks. The random
+// state is consumed once before StudyPerks can issue a shop-bound grant.
+model RedemptionFlow {
+  state      String    @id
+  shop       String
+  origin     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([shop, expiresAt])
+}
+
+// A signed StudyPerks grant is single-use. Its JWT ID is inserted before a
+// discount code is claimed; the primary key makes concurrent replay fail.
+model RedemptionAuthorization {
+  jti        String   @id
+  shop       String
+  consumedAt DateTime @default(now())
+
+  @@index([shop, consumedAt])
+}
+
 model AffiliateTransaction {
   id           String   @id @default(cuid())
   shop         String
