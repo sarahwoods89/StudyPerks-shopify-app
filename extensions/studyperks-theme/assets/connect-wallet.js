@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper?.classList.remove("studyperks-prompt-open");
   }
   function showEmailPrompt(message) {
-    positionFloating(emailPrompt);
+    positionFloating(emailPrompt, 300);
     emailPrompt?.classList.add("studyperks-email-prompt--visible");
     wrapper?.classList.add("studyperks-prompt-open");
     if (message && emailMessage) {
@@ -205,6 +205,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // happening. Submitting it opens the secure StudyPerks window. The server
     // still requires a Privy session or Phantom signature; email alone never
     // grants a discount.
-    showEmailPrompt("We’ll securely check your student pass.");
+    showEmailPrompt("Enter your student email to receive your student discount.");
   });
 });

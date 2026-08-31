@@ -22,9 +22,10 @@
   </button>
 
   <div class="studyperks-account-menu" id="studyperks-account-menu">
-    <p class="studyperks-account-menu__status">Verified &#10003; discount applied</p>
+    <p class="studyperks-account-menu__status">Verified &#10003; discount ready for checkout</p>
     <button type="button" class="studyperks-account-menu__disconnect" id="studyperks-disconnect">Not you? Disconnect</button>
   </div>
+  <p class="studyperks-applied-message" role="status">Verified &#10003; Your student discount is ready for checkout.</p>
   <button type="button" class="studyperks-inline-disconnect" id="studyperks-disconnect-inline">Not you? Disconnect</button>
 
   <div class="studyperks-email-prompt" id="studyperks-email-prompt">
@@ -50,7 +51,7 @@
       rel="noopener"
       class="studyperks-email-prompt__link"
       id="studyperks-verify-link"
-    >Verify now &#8594;</a>
+    >Not verified yet? Get verified here &#8594;</a>
   </div>
 
   <div class="studyperks-tooltip" id="studyperks-tooltip" data-default-text="{{ block.settings.hover_text | escape }}">
@@ -59,7 +60,7 @@
 
   <div class="studyperks-toast" id="studyperks-toast" role="status" aria-live="polite">
     <span class="studyperks-toast__icon" aria-hidden="true">&#10003;</span>
-    <span>You're verified — your student discount is applied automatically. Happy shopping!</span>
+    <span>You're verified! Your student discount will be added automatically at checkout. Keep shopping and enjoy your savings.</span>
   </div>
 
 </div>
