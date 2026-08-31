@@ -25,21 +25,22 @@
 .studyperks-badge-shell {
   position: relative;
   display: inline-flex;
+  flex-direction: column;
+  align-items: center;
   overflow: visible !important;
 }
 
 .studyperks-power-indicator {
   display: none;
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  width: 13px;
-  height: 13px;
+  position: static;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  flex: 0 0 12px;
   border-radius: 50%;
   background: #22c55e;
   border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.45), 0 0 9px rgba(34, 197, 94, 0.9);
-  z-index: 30;
+  box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.55), 0 0 7px rgba(34, 197, 94, 0.8);
   pointer-events: none;
 }
 
