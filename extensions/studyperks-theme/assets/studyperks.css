@@ -22,6 +22,31 @@
   background: transparent;
 }
 
+.studyperks-badge-shell {
+  position: relative;
+  display: inline-flex;
+  overflow: visible !important;
+}
+
+.studyperks-power-indicator {
+  display: none;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.45), 0 0 9px rgba(34, 197, 94, 0.9);
+  z-index: 30;
+  pointer-events: none;
+}
+
+.studyperks-wrapper--applied .studyperks-power-indicator {
+  display: block;
+}
+
 /* ── The badge button ── */
 /* width/max-width forced with !important — themes commonly apply a blanket
    "button { width: 100% }" rule to match their own Add to Cart/Buy buttons
@@ -107,41 +132,6 @@
   border-color: #16a34a;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12), 0 1px 4px rgba(22, 163, 74, 0.1);
-}
-
-/* Compact badge (header etc.): small corner dot instead of a colored box */
-.studyperks-badge__status-dot {
-  display: none;
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 10px;
-  height: 10px;
-  background: #16a34a;
-  border: 1.5px solid #fff;
-  border-radius: 50%;
-}
-
-.studyperks-badge--applied .studyperks-badge__status-dot {
-  display: block;
-}
-
-
-/* A dedicated applied marker survives themes that clip or restyle the
-   child status-dot, especially on compact mobile header badges. */
-.studyperks-badge--applied::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #16a34a;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.3);
-  z-index: 20;
-  pointer-events: none;
 }
 
 /* ── Tooltip ── */

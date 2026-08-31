@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (toast && !sessionStorage.getItem("studyperks_toast_shown")) {
       sessionStorage.setItem("studyperks_toast_shown", "true");
       toast.classList.add("studyperks-toast--visible");
-      setTimeout(() => toast.classList.remove("studyperks-toast--visible"), 5000);
+      setTimeout(() => toast.classList.remove("studyperks-toast--visible"), 9000);
     }
   }
   function clearState() {

@@ -2,24 +2,26 @@
   {% if block.settings.title_text != blank %}
     <p class="studyperks-badge__title"{% if block.settings.title_background != blank %} style="background-color: {{ block.settings.title_background }};"{% endif %}>{{ block.settings.title_text }}</p>
   {% endif %}
-  <button
-    id="studyperks-wallet-connect"
-    class="studyperks-badge{% if block.settings.compact_style %} studyperks-badge--compact{% endif %}"
-    type="button"
-    aria-label="StudyPerks — connect to claim your student discount"
-  >
-    <img
-      src="{{ 'StudyPerksLogo.png' | asset_url }}"
-      alt="StudyPerks"
-      class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
-      width="32"
-      height="32"
-      {% if block.settings.compact_style %}
-        style="width: {{ block.settings.icon_size }}px; height: {{ block.settings.icon_size }}px;"
-      {% endif %}
-    />
-    <span class="studyperks-badge__status-dot" aria-hidden="true"></span>
-  </button>
+  <span class="studyperks-badge-shell">
+    <button
+      id="studyperks-wallet-connect"
+      class="studyperks-badge{% if block.settings.compact_style %} studyperks-badge--compact{% endif %}"
+      type="button"
+      aria-label="StudyPerks — connect to claim your student discount"
+    >
+      <img
+        src="{{ 'StudyPerksLogo.png' | asset_url }}"
+        alt="StudyPerks"
+        class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
+        width="32"
+        height="32"
+        {% if block.settings.compact_style %}
+          style="width: {{ block.settings.icon_size }}px; height: {{ block.settings.icon_size }}px;"
+        {% endif %}
+      />
+    </button>
+    <span class="studyperks-power-indicator" aria-hidden="true"></span>
+  </span>
 
   <div class="studyperks-account-menu" id="studyperks-account-menu">
     <p class="studyperks-account-menu__status">Verified &#10003; discount ready for checkout</p>
