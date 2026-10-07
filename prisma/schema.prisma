@@ -45,6 +45,36 @@ model StudentDiscountCode {
   @@index([shop, issuedAt])
 }
 
+// Links one issued student code to a pseudonymous verified identity. Raw
+// wallets/emails never enter this database.
+model StudentDiscountClaim {
+  id           String   @id @default(cuid())
+  shop         String
+  identityHash String
+  activeCode   String?
+  updatedAt    DateTime @updatedAt
+
+  @@unique([shop, identityHash])
+  @@index([shop, activeCode])
+}
+
+// One durable refresh job per merchant. Revision checks preserve newer work
+// when a save or webhook arrives while the previous delivery is in flight.
+model OfferSyncState {
+  shop            String    @id
+  revision        Int       @default(1)
+  attempts        Int       @default(0)
+  nextAttemptAt   DateTime  @default(now())
+  leaseUntil      DateTime?
+  lastFingerprint String?
+  lastSyncedAt    DateTime?
+  lastError       String?
+  pending         Boolean   @default(true)
+  updatedAt       DateTime  @updatedAt
+
+  @@index([pending, nextAttemptAt])
+}
+
 // OAuth-style handoff from an installed storefront to StudyPerks. The random
 // state is consumed once before StudyPerks can issue a shop-bound grant.
 model RedemptionFlow {
