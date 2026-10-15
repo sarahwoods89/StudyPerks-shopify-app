@@ -1,10 +1,49 @@
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, Form, Link } from "@remix-run/react";
+import { useLoaderData, Form, Link, useRevalidator } from "@remix-run/react";
+import React from "react";
 import db from "../db.server";
 import { getSession, commitSession } from "../lib/adminSession.server";
 import { getShopDisplayName } from "../lib/shopName.server";
 
 const COMMISSION_RATE = 0.05;
+
+function playCashRegisterSound(context) {
+  if (!context) return;
+  const ring = () => {
+    const start = context.currentTime;
+    [[1046.5, 0, 0.3, 0.08], [1568, 0.06, 0.38, 0.07], [2093, 0.14, 0.42, 0.045]].forEach(([frequency, delay, duration, volume]) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const onset = start + delay;
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, onset);
+      gain.gain.setValueAtTime(0.001, onset);
+      gain.gain.exponentialRampToValueAtTime(volume, onset + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.001, onset + duration);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(onset);
+      oscillator.stop(onset + duration + 0.02);
+    });
+
+    // A short, soft drawer movement under the bright register bell.
+    const motor = context.createOscillator();
+    const motorGain = context.createGain();
+    motor.type = "triangle";
+    motor.frequency.setValueAtTime(175, start + 0.04);
+    motor.frequency.exponentialRampToValueAtTime(72, start + 0.28);
+    motorGain.gain.setValueAtTime(0.001, start + 0.04);
+    motorGain.gain.exponentialRampToValueAtTime(0.025, start + 0.07);
+    motorGain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+    motor.connect(motorGain);
+    motorGain.connect(context.destination);
+    motor.start(start + 0.04);
+    motor.stop(start + 0.32);
+  };
+
+  if (context.state === "running") ring();
+  else context.resume().then(ring).catch(() => {});
+}
 
 export const action = async ({ request }) => {
   const form = await request.formData();
@@ -23,7 +62,29 @@ export const action = async ({ request }) => {
 
 export const loader = async ({ request }) => {
   const session = await getSession(request.headers.get("Cookie"));
-  if (!session.get("authed")) return json({ authed: false });
+  const url = new URL(request.url);
+  const updatesOnly = url.searchParams.get("updates") === "1";
+  if (!session.get("authed")) {
+    return updatesOnly
+      ? json({ error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } })
+      : json({ authed: false });
+  }
+
+  // The admin screen polls this small, authenticated response for orders
+  // recorded after the page opened. It never exposes merchant data publicly.
+  if (updatesOnly) {
+    const since = new Date(url.searchParams.get("since") || "");
+    if (Number.isNaN(since.getTime())) {
+      return json({ error: "Invalid update cursor" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
+    const transactions = await db.affiliateTransaction.findMany({
+      where: { createdAt: { gte: since } },
+      orderBy: { createdAt: "asc" },
+      take: 100,
+      select: { id: true, shop: true, orderId: true, orderTotal: true, createdAt: true },
+    });
+    return json({ transactions }, { headers: { "Cache-Control": "no-store, private" } });
+  }
 
   const transactions = await db.affiliateTransaction.findMany({
     orderBy: { createdAt: "desc" },
@@ -68,6 +129,19 @@ const s = {
   page: { fontFamily: "system-ui, sans-serif", background: "#f5f3ff", minHeight: "100vh", padding: "40px 20px" },
   container: { maxWidth: "900px", margin: "0 auto" },
   header: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px" },
+  alertControls: { marginLeft: "auto", display: "flex", alignItems: "center", gap: "10px" },
+  soundButton: { background: "#e7f2a2", color: "#263000", border: "1px solid #c8df52", borderRadius: "9px", padding: "9px 12px", fontSize: "13px", fontWeight: "650", cursor: "pointer", whiteSpace: "nowrap" },
+  bellArea: { position: "relative" },
+  bellButton: { position: "relative", display: "grid", placeItems: "center", width: "42px", height: "42px", border: "1px solid #e5e7eb", borderRadius: "50%", background: "#fff", color: "#1e1b4b", cursor: "pointer" },
+  notificationCount: { position: "absolute", top: "-5px", right: "-6px", minWidth: "19px", height: "19px", padding: "0 4px", boxSizing: "border-box", display: "grid", placeItems: "center", borderRadius: "12px", background: "#dc2626", color: "#fff", border: "2px solid #f5f3ff", fontSize: "10px", lineHeight: 1, fontWeight: "700" },
+  notificationPanel: { position: "absolute", zIndex: 20, top: "50px", right: 0, width: "min(350px, calc(100vw - 40px))", padding: "14px", boxSizing: "border-box", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", boxShadow: "0 8px 28px rgba(0,0,0,0.16)" },
+  notificationHeading: { display: "block", color: "#1e1b4b", fontSize: "14px", marginBottom: "8px" },
+  notificationEmpty: { color: "#6b7280", fontSize: "13px", lineHeight: 1.5, margin: "8px 0 2px" },
+  notificationItem: { display: "flex", alignItems: "flex-start", gap: "9px", padding: "10px 0", borderTop: "1px solid #f3f4f6", fontSize: "12px" },
+  notificationDot: { width: "8px", height: "8px", flex: "0 0 8px", borderRadius: "50%", background: "#84a900", marginTop: "4px" },
+  notificationShop: { display: "block", color: "#374151", fontWeight: "650", overflowWrap: "anywhere" },
+  notificationOrder: { display: "block", color: "#6b7280", marginTop: "3px" },
+  notificationTime: { marginLeft: "auto", color: "#9ca3af", whiteSpace: "nowrap" },
   logo: { width: "44px", height: "44px", borderRadius: "10px" },
   title: { fontSize: "24px", fontWeight: "700", color: "#1e1b4b", margin: 0 },
   sub: { fontSize: "13px", color: "#6b7280", margin: 0 },
@@ -90,6 +164,100 @@ const s = {
 
 export default function Admin() {
   const data = useLoaderData();
+  const { revalidate } = useRevalidator();
+  const [notifications, setNotifications] = React.useState([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
+  const [bellOpen, setBellOpen] = React.useState(false);
+  const [soundOn, setSoundOn] = React.useState(true);
+  const [soundReady, setSoundReady] = React.useState(false);
+  const audioContextRef = React.useRef(null);
+  const soundOnRef = React.useRef(true);
+
+  React.useEffect(() => {
+    try {
+      if (window.localStorage.getItem("studyperks_admin_sound") === "off") {
+        soundOnRef.current = false;
+        setSoundOn(false);
+      }
+    } catch { /* Storage can be disabled; sound remains on for this visit. */ }
+  }, []);
+
+  React.useEffect(() => {
+    if (!data.authed) return undefined;
+
+    const initial = data.transactions || [];
+    const seen = new Set(initial.map((transaction) => transaction.id));
+    let newestTimestamp = initial.reduce((latest, transaction) => (
+      Math.max(latest, new Date(transaction.createdAt).getTime())
+    ), 0);
+    if (!newestTimestamp) newestTimestamp = Date.now();
+
+    let polling = false;
+    const poll = async () => {
+      if (polling) return;
+      polling = true;
+      const since = new Date(Math.max(0, newestTimestamp - 1000)).toISOString();
+      try {
+        const response = await fetch(`/admin?updates=1&since=${encodeURIComponent(since)}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const fresh = (payload.transactions || []).filter((transaction) => !seen.has(transaction.id));
+        if (!fresh.length) return;
+
+        for (const transaction of fresh) {
+          seen.add(transaction.id);
+          newestTimestamp = Math.max(newestTimestamp, new Date(transaction.createdAt).getTime());
+        }
+        setNotifications((current) => [...fresh.reverse(), ...current].slice(0, 20));
+        setUnreadCount((count) => count + fresh.length);
+        if (soundOnRef.current) playCashRegisterSound(audioContextRef.current);
+        // Refresh the totals and recent-orders table after raising the alert.
+        revalidate();
+      } catch {
+        // A temporary connection failure is harmless; the next poll retries.
+      } finally {
+        polling = false;
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(poll, 15000);
+    const onFocus = () => { if (document.visibilityState === "visible") poll(); };
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [data.authed, data.transactions, revalidate]);
+
+  async function handleSoundClick() {
+    if (!soundOn || !soundReady) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        const context = audioContextRef.current || new AudioContextClass();
+        audioContextRef.current = context;
+        try { await context.resume(); } catch { /* The sound control remains available to retry. */ }
+        if (context.state === "running") {
+          setSoundReady(true);
+          setSoundOn(true);
+          soundOnRef.current = true;
+          try { window.localStorage.setItem("studyperks_admin_sound", "on"); } catch { /* Ignore unavailable storage. */ }
+          playCashRegisterSound(context);
+          return;
+        }
+      }
+      setSoundReady(false);
+      return;
+    }
+
+    setSoundOn(false);
+    soundOnRef.current = false;
+    try { window.localStorage.setItem("studyperks_admin_sound", "off"); } catch { /* Ignore unavailable storage. */ }
+  }
 
   if (!data.authed) {
     return (
@@ -124,6 +292,42 @@ export default function Admin() {
           <div>
             <p style={s.title}>StudyPerks Admin</p>
             <p style={s.sub}>Commission & merchant overview</p>
+          </div>
+          <div style={s.alertControls}>
+            <button type="button" style={s.soundButton} onClick={handleSoundClick} aria-label={soundOn ? (soundReady ? "Turn transaction sound off" : "Enable transaction sound") : "Turn transaction sound on"}>
+              {soundOn ? (soundReady ? "🔔 Sound on" : "🔔 Enable sound") : "🔕 Sound off"}
+            </button>
+            <div style={s.bellArea}>
+              <button
+                type="button"
+                style={s.bellButton}
+                onClick={() => { setBellOpen((open) => !open); setUnreadCount(0); }}
+                aria-label={unreadCount ? `${unreadCount} new transaction notifications` : "Transaction notifications"}
+                aria-expanded={bellOpen}
+              >
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {unreadCount > 0 && <span style={s.notificationCount}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
+              </button>
+              {bellOpen && (
+                <div style={s.notificationPanel}>
+                  <strong style={s.notificationHeading}>New transactions</strong>
+                  {notifications.length === 0
+                    ? <p style={s.notificationEmpty}>You’re all caught up. I’ll let you know when a sale is recorded.</p>
+                    : notifications.slice(0, 8).map((transaction) => (
+                      <div key={transaction.id} style={s.notificationItem}>
+                        <span style={s.notificationDot} />
+                        <span>
+                          <span style={s.notificationShop}>{transaction.shop}</span>
+                          <span style={s.notificationOrder}>Order #{transaction.orderId}</span>
+                        </span>
+                        <time style={s.notificationTime}>{new Date(transaction.createdAt).toLocaleTimeString("en-IE", { hour: "2-digit", minute: "2-digit" })}</time>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
