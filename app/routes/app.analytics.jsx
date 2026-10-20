@@ -65,7 +65,7 @@ export default function Analytics() {
               <Text variant="headingMd" as="h2">Student Orders</Text>
               <Text variant="heading2xl" as="p">{totalOrders}</Text>
               <Text as="p"  variant="bodySm">
-                Orders placed using STUDYPERKS discount
+                Orders placed using StudyPerks discount codes
               </Text>
             </BlockStack>
           </Card>
@@ -82,11 +82,26 @@ export default function Analytics() {
 
         <Card>
           <BlockStack gap="300">
+            <Text variant="headingMd" as="h2">Track student purchases in Shopify</Text>
+            <Text as="p" variant="bodyMd">
+              Every successful student verification generates a unique, one-time discount
+              code starting with <strong>SP-</strong>. Each code can be used for one purchase.
+            </Text>
+            <Text as="p" variant="bodyMd">
+              Use the <strong>SP-</strong> prefix to identify StudyPerks discount codes in
+              your Shopify orders and discount reports, so you can track student purchases
+              in your own store analytics alongside this dashboard.
+            </Text>
+          </BlockStack>
+        </Card>
+
+        <Card>
+          <BlockStack gap="300">
             <Text variant="headingMd" as="h2">Recent Student Orders</Text>
             {rows.length === 0 ? (
               <Text as="p" >
-                No student orders yet. Once a student uses the STUDYPERKS discount
-                code at checkout, their order will appear here.
+                No student orders yet. Once a student completes a purchase using a
+                StudyPerks discount code, their order will appear here.
               </Text>
             ) : (
               <DataTable

@@ -29,10 +29,10 @@ export const loader = async ({ request }) => {
 };
 
 
-const COLLECTION_MINT = "DM8CuRPtBtHVXhRkT563d1RNAE4H3EpmiKJTxzbdMzpC";
+const STUDYPERKS_ADDRESS = "9S7pJak91ds6kiGFkgGNmBQDr187XFYpKPPKpqmHwKUb";
 const COLLECTION_NAME = "StudyPerks Student";
-const NETWORK = "Solana Devnet";
-const SOLSCAN_URL = `https://explorer.solana.com/address/${COLLECTION_MINT}?cluster=devnet`;
+const NETWORK = "Solana";
+const SOLSCAN_URL = `https://solscan.io/account/${STUDYPERKS_ADDRESS}`;
 
 const purple     = "#7C3AED";
 const purpleDark = "#5B21B6";
@@ -129,11 +129,11 @@ export default function Index() {
               </Text>
               <BlockStack gap="200">
                 <Text as="p" variant="bodyMd"><strong>1.</strong> Student clicks the StudyPerks badge on your store.</Text>
-                <Text as="p" variant="bodyMd"><strong>2.</strong> We validate their StudyPerks token. They never leave your store to find a code.</Text>
-                <Text as="p" variant="bodyMd"><strong>3.</strong> Discount applied at checkout automatically. No drop-off. They buy, they come back.</Text>
+                <Text as="p" variant="bodyMd"><strong>2.</strong> Student verifies their student status with StudyPerks.</Text>
+                <Text as="p" variant="bodyMd"><strong>3.</strong> A one-time discount code starting with SP- is generated and applied automatically at checkout.</Text>
               </BlockStack>
               <Text as="p" variant="bodyMd">
-                Every verified order is tracked in your dashboard above. You get the sale, the loyalty, and a student customer who feels genuinely valued by your brand.
+                Student purchases are tracked in your dashboard above. You can also identify them in your Shopify orders and analytics by their SP- discount codes.
               </Text>
             </BlockStack>
 
@@ -149,7 +149,7 @@ export default function Index() {
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "12px", fontWeight: "700", color: purpleDark, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  Metaplex Collection
+                  StudyPerks on Solana
                 </span>
                 <span style={{
                   background: "#EDE9FE",
@@ -162,12 +162,12 @@ export default function Index() {
               </div>
 
               <div>
-                <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>Collection name</div>
+                <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>Name</div>
                 <div style={{ fontWeight: "600", fontSize: "14px", color: "#111" }}>{COLLECTION_NAME}</div>
               </div>
 
               <div>
-                <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>Collection mint</div>
+                <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>StudyPerks address</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <code style={{
                     fontFamily: "monospace",
@@ -178,7 +178,7 @@ export default function Index() {
                     borderRadius: "4px",
                     wordBreak: "break-all",
                   }}>
-                    {COLLECTION_MINT}
+                    {STUDYPERKS_ADDRESS}
                   </code>
                   <a
                     href={SOLSCAN_URL}
@@ -186,15 +186,15 @@ export default function Index() {
                     rel="noreferrer"
                     style={{ fontSize: "11px", color: purple, textDecoration: "none", whiteSpace: "nowrap" }}
                   >
-                    View on Solana Explorer ↗
+                    View on Solscan ↗
                   </a>
                 </div>
               </div>
 
               <div style={{ borderTop: "1px solid #DDD6FE", paddingTop: "10px" }}>
-                <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>Token authority</div>
+                <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>Student verification</div>
                 <div style={{ fontSize: "12px", color: "#111" }}>
-                  Managed by StudyPerks. Only verified students receive a token from this collection.
+                  Managed by StudyPerks. Only verified students receive a student discount code.
                 </div>
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function Index() {
             <Text variant="headingMd" as="h2">Storefront Setup</Text>
             <Text as="p" variant="bodyMd">
               To show the StudyPerks badge on your store, add
-              the <strong>StudyPerks Wallet Connect</strong> block to your theme
+              the <strong>StudyPerks Badge</strong> block to your theme
               via <strong>Online Store &gt; Themes &gt; Customize</strong>. Place it
               on product pages.
             </Text>
@@ -224,7 +224,7 @@ export default function Index() {
               padding: "12px 16px",
             }}>
               <Text as="p" variant="bodySm">
-                ✓ The badge updates automatically when a verified student connects. No extra steps for you.
+                ✓ The discount is applied automatically after successful student verification. No extra steps for you.
               </Text>
             </div>
           </BlockStack>
