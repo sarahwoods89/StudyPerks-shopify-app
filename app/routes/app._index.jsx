@@ -13,6 +13,7 @@ import { useLoaderData } from "@remix-run/react";
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { brand } from "../lib/brand";
 
 export const loader = async ({ request }) => {
   const { session } = await authenticate.admin(request);
@@ -34,10 +35,6 @@ const COLLECTION_NAME = "StudyPerks Student";
 const NETWORK = "Solana";
 const SOLSCAN_URL = `https://solscan.io/account/${STUDYPERKS_ADDRESS}`;
 
-const purple     = "#7C3AED";
-const purpleDark = "#5B21B6";
-const green      = "#14F195";
-
 export default function Index() {
   const { totalOrders, totalRevenue, config } = useLoaderData();
   const isActive = !!config;
@@ -49,7 +46,7 @@ export default function Index() {
 
         {/* ── Header ── */}
         <div style={{
-          background: "#12002E",
+          background: brand.black,
           borderRadius: "14px",
           padding: "28px 32px",
           display: "flex",
@@ -57,7 +54,7 @@ export default function Index() {
           gap: "22px",
         }}>
           <img
-            src="/StudyPerksLogo.png?v=2"
+            src="/studyperks-logo-black-lime.png"
             alt="StudyPerks"
             style={{ width: "80px", height: "80px", borderRadius: "16px", flexShrink: 0, display: "block" }}
           />
@@ -72,7 +69,7 @@ export default function Index() {
           <div style={{ marginLeft: "auto", flexShrink: 0 }}>
             {isActive ? (
               <span style={{
-                background: "#14F195",
+                background: brand.lime,
                 color: "#000",
                 borderRadius: "20px",
                 padding: "6px 16px",
@@ -139,8 +136,8 @@ export default function Index() {
 
             {/* Collection details */}
             <div style={{
-              background: "#F5F0FF",
-              border: "1px solid #DDD6FE",
+              background: brand.offWhite,
+              border: "1px solid #ded9ce",
               borderRadius: "10px",
               padding: "16px",
               display: "flex",
@@ -148,12 +145,12 @@ export default function Index() {
               gap: "10px",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "12px", fontWeight: "700", color: purpleDark, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <span style={{ fontSize: "12px", fontWeight: "700", color: brand.black, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   StudyPerks on Solana
                 </span>
                 <span style={{
-                  background: "#EDE9FE",
-                  color: purpleDark,
+                  background: brand.lime,
+                  color: brand.black,
                   borderRadius: "12px",
                   padding: "2px 10px",
                   fontSize: "11px",
@@ -172,8 +169,8 @@ export default function Index() {
                   <code style={{
                     fontFamily: "monospace",
                     fontSize: "11px",
-                    color: purpleDark,
-                    background: "#EDE9FE",
+                    color: brand.black,
+                    background: "#fff",
                     padding: "3px 8px",
                     borderRadius: "4px",
                     wordBreak: "break-all",
@@ -184,14 +181,14 @@ export default function Index() {
                     href={SOLSCAN_URL}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ fontSize: "11px", color: purple, textDecoration: "none", whiteSpace: "nowrap" }}
+                    style={{ fontSize: "11px", color: brand.blue, textDecoration: "none", whiteSpace: "nowrap" }}
                   >
                     View on Solscan ↗
                   </a>
                 </div>
               </div>
 
-              <div style={{ borderTop: "1px solid #DDD6FE", paddingTop: "10px" }}>
+              <div style={{ borderTop: "1px solid #ded9ce", paddingTop: "10px" }}>
                 <div style={{ fontSize: "11px", color: "#111", marginBottom: "2px" }}>Student verification</div>
                 <div style={{ fontSize: "12px", color: "#111" }}>
                   Managed by StudyPerks. Only verified students receive a student discount code.
@@ -218,8 +215,9 @@ export default function Index() {
               on product pages.
             </Text>
             <div style={{
-              background: "#F0FDF4",
-              border: "1px solid #BBF7D0",
+              background: brand.lime,
+              color: brand.black,
+              border: `1px solid ${brand.lime}`,
               borderRadius: "8px",
               padding: "12px 16px",
             }}>
