@@ -23,7 +23,7 @@ async function verifyRedemptionAuthorization({ authorization, shop }) {
     if (!res.ok) return false;
     const data = await res.json();
     return data.verified === true && data.eligible === true && typeof data.jti === "string"
-      ? { jti: data.jti }
+      ? { jti: data.jti, identityHash: data.identityHash }
       : null;
   } catch (err) {
     console.error("StudyPerks session verification failed:", err);
@@ -70,7 +70,10 @@ export async function action({ request }) {
 
   try {
     await db.redemptionAuthorization.create({ data: { jti: verified.jti, shop } });
-    const code = await claimCode(shop);
+    if (!/^[a-f0-9]{64}$/.test(verified.identityHash || "")) {
+      return json({ error: "Verified student identity is unavailable" }, { status: 502, headers: CORS_HEADERS });
+    }
+    const code = await claimCode(shop, verified.identityHash);
     return json({ code }, { headers: CORS_HEADERS });
   } catch (err) {
     if (err?.code === "P2002") {

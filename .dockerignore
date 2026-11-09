@@ -1,3 +1,10 @@
 .cache
 build
 node_modules
+.env
+.env.*
+.git
+.shopify
+.codex
+.agents
+tests

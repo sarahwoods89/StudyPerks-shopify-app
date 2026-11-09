@@ -14,11 +14,11 @@ datasource db {
 }
 
 model DiscountConfig {
-  id            String   @id @default(cuid())
-  shop          String   @unique
-  discountName  String
-  discountType  String
-  discountValue Float
+  id                  String   @id @default(cuid())
+  shop                String   @unique
+  discountName        String
+  discountType        String
+  discountValue       Float
   // Which collections the discount is scoped to when scope isn't "all" —
   // e.g. everything except a merchant's "Sale" collection. Empty = all products.
   discountCollections String[] @default([])
@@ -26,8 +26,8 @@ model DiscountConfig {
   // never have to rediscover it by searching for a specific code string —
   // that broke once STUDYPERKS itself was removed as a code. Set on first
   // lookup, reused after.
-  discountId    String?
-  updatedAt     DateTime @updatedAt
+  discountId          String?
+  updatedAt           DateTime @updatedAt
 }
 
 // A pool of unique, single-use discount codes per shop, generated in batches
@@ -99,17 +99,21 @@ model RedemptionAuthorization {
 }
 
 model AffiliateTransaction {
-  id           String   @id @default(cuid())
-  shop         String
-  orderId      String
-  orderTotal   Float
-  discountCode String
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  shop           String
+  orderId        String
+  orderTotal     Float
+  discountCode   String
+  identityHash   String?
+  discountAmount Float?
+  currencyCode   String?
+  createdAt      DateTime @default(now())
   // Set when this order is included on a generated invoice, so the next
   // invoice for this shop only picks up orders not yet billed.
-  invoiceId    String?
+  invoiceId      String?
 
   @@unique([shop, orderId])
+  @@index([identityHash, currencyCode])
 }
 
 // A generated commission invoice for one shop, covering every
@@ -127,24 +131,24 @@ model Invoice {
 }
 
 model Session {
-  id            String    @id
-  shop          String
+  id                  String    @id
+  shop                String
   // Cached display name from the Shopify Admin API (e.g. "Lerelle Beauty")
   // — the shop's .myshopify.com domain often doesn't match its storefront
   // name/brand at all, so this saves manually looking each one up.
-  shopName      String?
-  createdAt     DateTime  @default(now())
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
+  shopName            String?
+  createdAt           DateTime  @default(now())
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
   collaborator        Boolean?  @default(false)
   emailVerified       Boolean?  @default(false)
   refreshToken        String?

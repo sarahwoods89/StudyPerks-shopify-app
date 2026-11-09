@@ -1,3 +1,8 @@
+
+
+
+
+
 node_modules
 .DS_Store
 
@@ -23,3 +28,4 @@ database.sqlite
 # Ignore shopify files created during app dev
 .shopify/*
 .shopify.lock
+.local-backups/

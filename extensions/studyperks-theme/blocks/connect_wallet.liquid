@@ -1,3 +1,11 @@
+{% assign logo_asset = 'StudyPerksLogo.png' %}
+{% case block.settings.logo_variant %}
+  {% when 'black_lime' %}{% assign logo_asset = 'studyperks-logo-black-lime.png' %}
+  {% when 'blue_lime' %}{% assign logo_asset = 'studyperks-logo-blue-lime.png' %}
+  {% when 'cream_black' %}{% assign logo_asset = 'studyperks-logo-cream-black.png' %}
+  {% when 'cream_blue' %}{% assign logo_asset = 'studyperks-logo-cream-black.png' %}
+  {% when 'lime_blue' %}{% assign logo_asset = 'studyperks-logo-black-lime.png' %}
+{% endcase %}
 <div class="studyperks-wrapper" data-shop="{{ shop.permanent_domain }}" style="padding-top: {{ block.settings.padding_top }}px; padding-bottom: {{ block.settings.padding_bottom }}px;">
   {% if block.settings.title_text != blank %}
     <p class="studyperks-badge__title"{% if block.settings.title_background != blank %} style="background-color: {{ block.settings.title_background }};"{% endif %}>{{ block.settings.title_text }}</p>
@@ -9,25 +17,27 @@
       type="button"
       aria-label="StudyPerks — connect to claim your student discount"
     >
+      <span class="studyperks-logo-wrap{% if logo_asset == 'StudyPerksLogo.png' %} studyperks-logo-wrap--plain{% endif %}">
       <img
-        src="{{ 'StudyPerksLogo.png' | asset_url }}"
+        src="{{ logo_asset | asset_url }}"
         alt="StudyPerks"
-        class="studyperks-badge__logo studyperks-badge__logo--{{ block.settings.logo_style }}"
+        class="studyperks-badge__logo{% if logo_asset == 'StudyPerksLogo.png' %} studyperks-badge__logo--black{% if block.settings.logo_variant != 'plain' and block.settings.logo_style == 'white' %} studyperks-badge__logo--white{% endif %}{% endif %}"
         width="32"
         height="32"
         {% if block.settings.compact_style %}
           style="width: {{ block.settings.icon_size }}px; height: {{ block.settings.icon_size }}px;"
         {% endif %}
       />
+      <span class="studyperks-power-indicator" aria-hidden="true"></span>
+      </span>
     </button>
-    <span class="studyperks-power-indicator" aria-hidden="true"></span>
   </span>
 
   <div class="studyperks-account-menu" id="studyperks-account-menu">
-    <p class="studyperks-account-menu__status">Verified &#10003; discount ready for checkout</p>
+    <p class="studyperks-account-menu__status">Verified <span class="studyperks-verified-tick">&#10003;</span> Discount ready</p>
     <button type="button" class="studyperks-account-menu__disconnect" id="studyperks-disconnect">Not you? Disconnect</button>
   </div>
-  <p class="studyperks-applied-message" role="status">Verified &#10003; Your student discount is ready for checkout.</p>
+  <p class="studyperks-applied-message" role="status">Verified <span class="studyperks-verified-tick">&#10003;</span> Discount ready</p>
   <button type="button" class="studyperks-inline-disconnect" id="studyperks-disconnect-inline">Not you? Disconnect</button>
 
   <div class="studyperks-email-prompt" id="studyperks-email-prompt">
@@ -41,7 +51,6 @@
       />
       <button type="button" id="studyperks-email-submit" class="studyperks-email-submit">&#8594;</button>
     </div>
-    <button type="button" id="studyperks-phantom-link" class="studyperks-email-prompt__link" style="display:none;border:0;background:none;cursor:pointer;">Have Phantom? Connect wallet instead</button>
     <p
       class="studyperks-email-prompt__message"
       id="studyperks-email-message"
@@ -77,15 +86,16 @@
   "settings": [
     {
       "type": "select",
-      "id": "logo_style",
-      "label": "Logo colour",
+      "id": "logo_variant",
+      "label": "Logo",
+      "info": "Plain is a black logo with no background, ideal for headers.",
       "options": [
-        { "value": "original", "label": "Original (gradient)" },
-        { "value": "greyscale", "label": "Greyscale" },
-        { "value": "black", "label": "Black" },
-        { "value": "white", "label": "White" }
+        { "value": "plain", "label": "Plain (no background)" },
+        { "value": "black_lime", "label": "Black" },
+        { "value": "cream_black", "label": "Off-white" },
+        { "value": "blue_lime", "label": "Blue" }
       ],
-      "default": "original"
+      "default": "plain"
     },
     {
       "type": "checkbox",

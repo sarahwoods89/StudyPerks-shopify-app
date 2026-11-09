@@ -150,7 +150,7 @@ async function lookupDiscountIdByTitle(shop, accessToken, title) {
 // Finds the shop's StudyPerks discount ID without depending on "STUDYPERKS"
 // still existing as a code — that broke once it was removed for security.
 // Caches the result so this lookup, in any form, only ever has to happen once.
-export async function getDiscountId(shop, accessToken) {
+export async function getDiscountId(shop, accessToken, { cache = true, allowTitle = true } = {}) {
   const config = await db.discountConfig.findUnique({ where: { shop } });
   if (config?.discountId) return config.discountId;
 
@@ -164,13 +164,13 @@ export async function getDiscountId(shop, accessToken) {
     }
   }
 
-  if (!id && config?.discountName) {
+  if (!id && allowTitle && config?.discountName) {
     // Neither code lookup found anything — no code of any kind exists to
     // search by yet. Fall back to listing discounts and matching by title.
     id = await lookupDiscountIdByTitle(shop, accessToken, config.discountName);
   }
 
-  if (id) {
+  if (id && cache) {
     await db.discountConfig.updateMany({ where: { shop }, data: { discountId: id } });
   }
 
@@ -216,10 +216,25 @@ async function generateCodeBatch(shop, accessToken, discountId, count = BATCH_SI
 // Atomically claims one unused code for a shop. Auto-replenishes the pool
 // (and waits for it) if none are available — acceptable for now given
 // expected volume; worth revisiting if verification traffic grows a lot.
-export async function claimCode(shop) {
+export async function claimCode(shop, identityHash = null) {
+  if (identityHash !== null && !/^[a-f0-9]{64}$/.test(identityHash)) {
+    throw new Error("Invalid student identity hash");
+  }
   const accessToken = await getAccessToken(shop);
   if (!accessToken) {
     throw new Error(`No offline access token found for shop ${shop}`);
+  }
+
+  if (identityHash) {
+    const existingClaim = await db.studentDiscountClaim.findUnique({
+      where: { shop_identityHash: { shop, identityHash } },
+    });
+    if (existingClaim?.activeCode) {
+      const existingCode = await db.studentDiscountCode.findUnique({
+        where: { shop_code: { shop, code: existingClaim.activeCode } },
+      });
+      if (existingCode && !existingCode.redeemedOrderId) return existingCode.code;
+    }
   }
 
   let candidate = await db.studentDiscountCode.findFirst({
@@ -259,8 +274,15 @@ export async function claimCode(shop) {
 
   if (claimed.count === 0) {
     // Lost the race — try again once.
-    return claimCode(shop);
+    return claimCode(shop, identityHash);
   }
 
+  if (identityHash) {
+    await db.studentDiscountClaim.upsert({
+      where: { shop_identityHash: { shop, identityHash } },
+      update: { activeCode: candidate.code },
+      create: { shop, identityHash, activeCode: candidate.code },
+    });
+  }
   return candidate.code;
 }

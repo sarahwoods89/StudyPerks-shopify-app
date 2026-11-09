@@ -10,4 +10,9 @@ module.exports = {
   globals: {
     shopify: "readonly"
   },
+  overrides: [{
+    files: ["tests/**/*.test.js"],
+    // These tests use node:test, not Jest.
+    rules: Object.fromEntries(Object.keys(require("eslint-plugin-jest").rules).map((name) => [`jest/${name}`, "off"])),
+  }],
 };

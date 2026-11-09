@@ -16,6 +16,8 @@ import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { randomCode, getDiscountId } from "../lib/discountCodes.server";
+import { enqueueOfferSync, deliverOffer } from "../lib/offerQueue.server";
+import { brand } from "../lib/brand";
 
 export const loader = async ({ request }) => {
   const { admin, session } = await authenticate.admin(request);
@@ -51,18 +53,20 @@ export const action = async ({ request }) => {
   const value = body.get("value");
   const scope = body.get("scope") || "all";
   let collectionIds = [];
+  let confirmedDiscountId = null;
   try {
     collectionIds = JSON.parse(body.get("collectionIds") || "[]");
   } catch {
-    collectionIds = [];
+    return json({ error: "Invalid collection selection." }, { status: 400 });
   }
   if (scope !== "collections") collectionIds = [];
-
-  await db.discountConfig.upsert({
-    where: { shop },
-    update: { discountName: name, discountType: type, discountValue: Number(value), discountCollections: collectionIds },
-    create: { shop, discountName: name, discountType: type, discountValue: Number(value), discountCollections: collectionIds },
-  });
+  if (typeof name !== "string" || !name.trim() || !["percentage", "fixed"].includes(type)
+    || !Number.isFinite(Number(value)) || Number(value) <= 0 || (type === "percentage" && Number(value) > 100)
+    || !["all", "collections"].includes(scope) || !Array.isArray(collectionIds)
+    || collectionIds.length > 100 || collectionIds.some((id) => typeof id !== "string" || !/^gid:\/\/shopify\/Collection\/\d+$/.test(id))
+    || (scope === "collections" && !collectionIds.length)) {
+    return json({ error: "Enter a valid discount and select its applicable collections." }, { status: 400 });
+  }
 
   const items =
     scope === "collections" && collectionIds.length > 0
@@ -86,7 +90,7 @@ export const action = async ({ request }) => {
     // save (see 2026-08-24 security fix), that duplicate-code error would
     // basically never fire again, so every re-save would silently create a
     // brand new, separate discount instead of updating the existing one.
-    const existingId = await getDiscountId(shop, session.accessToken);
+    const existingId = await getDiscountId(shop, session.accessToken, { cache: false });
 
     if (existingId) {
       const updateRes = await admin.graphql(
@@ -100,10 +104,13 @@ export const action = async ({ request }) => {
         { variables: { id: existingId, discount: { title: name, customerGets } } }
       );
       const updateData = await updateRes.json();
-      console.log("discountCodeBasicUpdate response:", JSON.stringify(updateData));
       const updateErrors = updateData?.data?.discountCodeBasicUpdate?.userErrors ?? [];
       if (updateErrors.length > 0) {
         return json({ error: `Could not update discount: ${updateErrors[0].message}` }, { status: 400 });
+      }
+      confirmedDiscountId = updateData?.data?.discountCodeBasicUpdate?.codeDiscountNode?.id;
+      if (!updateRes.ok || updateData.errors?.length || !confirmedDiscountId) {
+        return json({ error: "Shopify did not confirm the discount update." }, { status: 502 });
       }
     } else {
       const discountInput = {
@@ -133,27 +140,42 @@ export const action = async ({ request }) => {
         { variables: { discount: discountInput } }
       );
       const discountData = await discountRes.json();
-      console.log("discountCodeBasicCreate response:", JSON.stringify(discountData));
       const errors = discountData?.data?.discountCodeBasicCreate?.userErrors ?? [];
       if (errors.length > 0) {
         return json({ error: `Could not create discount: ${errors[0].message}` }, { status: 400 });
       }
       const newId = discountData?.data?.discountCodeBasicCreate?.codeDiscountNode?.id;
-      if (newId) {
-        await db.discountConfig.updateMany({ where: { shop }, data: { discountId: newId } });
-      }
+      if (!discountRes.ok || discountData.errors?.length || !newId) return json({ error: "Shopify did not confirm the new discount." }, { status: 502 });
+      confirmedDiscountId = newId;
     }
   } catch (err) {
-    if (err instanceof Response) {
-      const body = await err.text().catch(() => "(unreadable)");
-      console.error("Shopify discount sync error — status:", err.status, "body:", body);
-      return json({ error: `Shopify error ${err.status}: ${body}` }, { status: 400 });
-    }
-    console.error("Shopify discount sync error:", err);
-    return json({ error: `Unexpected error: ${err?.message || String(err)}` }, { status: 500 });
+    console.error("Shopify discount mutation failed", err instanceof Response ? err.status : "request error");
+    return json({ error: "Shopify could not confirm the discount. Please try again." }, { status: 502 });
   }
 
-  return json({ success: true });
+  // Persist and advertise only after Shopify has confirmed the mutation.
+  await db.$transaction(async (tx) => {
+    const confirmed = {
+      discountName: name,
+      discountType: type,
+      discountValue: Number(value),
+      discountCollections: collectionIds,
+      discountId: confirmedDiscountId,
+    };
+    await tx.discountConfig.upsert({ where: { shop }, update: confirmed, create: { shop, ...confirmed } });
+    await enqueueOfferSync(shop, tx, { force: true });
+  });
+
+  let syncWarning = null;
+  try {
+    const result = await deliverOffer(shop);
+    if (result.pending) syncWarning = "Your discount is saved. The student offer catalogue is still updating; we will retry automatically.";
+    else if (!result.active) syncWarning = "Your discount is saved, but is not currently advertised in the student catalogue. Check its dates and restrictions.";
+  } catch {
+    syncWarning = "Your discount is saved. The student offer catalogue is still updating; we will retry automatically.";
+  }
+
+  return json({ success: true, syncWarning });
 };
 
 export default function Settings() {
@@ -188,8 +210,19 @@ export default function Settings() {
       <BlockStack gap="500">
 
         {actionData?.success && (
+          <div style={{
+            "--p-color-bg-fill-success": brand.lime,
+            "--p-color-text-success-on-bg-fill": brand.black,
+            "--p-color-icon-success-on-bg-fill": brand.black,
+          }}>
           <Banner tone="success" title="Discount saved and activated">
             Verified students will now receive this discount automatically at checkout.
+          </Banner>
+          </div>
+        )}
+        {actionData?.syncWarning && (
+          <Banner tone="warning" title="Discount saved; catalogue refresh needs attention">
+            {actionData.syncWarning}
           </Banner>
         )}
         {actionData?.error && (
@@ -274,8 +307,9 @@ export default function Settings() {
                   type="submit"
                   disabled={isSaving}
                   style={{
-                    background: isSaving ? "#9CA3AF" : "linear-gradient(135deg, #9945FF 0%, #14F195 100%)",
-                    color: "#000",
+                    background: brand.blue,
+                    color: "#fff",
+                    opacity: isSaving ? 0.6 : 1,
                     border: "none",
                     borderRadius: "8px",
                     padding: "12px 24px",

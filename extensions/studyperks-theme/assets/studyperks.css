@@ -4,7 +4,9 @@
   align-items: center;
   gap: 6px;
   position: relative;
-  z-index: 100;
+  /* Keep the badge inside the theme's normal stacking order so cart drawers
+     and other full-screen storefront panels can cover it when opened. */
+  z-index: auto;
 }
 
 .studyperks-badge__title {
@@ -30,18 +32,34 @@
   overflow: visible !important;
 }
 
+.studyperks-logo-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .studyperks-power-indicator {
   display: none;
-  position: static;
-  width: 12px;
-  height: 12px;
-  margin-top: 5px;
-  flex: 0 0 12px;
+  position: absolute;
+  top: 62%;
+  left: 73.5%;
+  transform: translate(-50%, -50%);
+  width: 12%;
+  height: 12%;
+  min-width: 4px;
+  min-height: 4px;
+  margin: 0;
+  box-sizing: border-box;
   border-radius: 50%;
   background: #22c55e;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.55), 0 0 7px rgba(34, 197, 94, 0.8);
+  border: none;
+  box-shadow: 0 0 0 1px rgba(21, 128, 61, 0.55);
   pointer-events: none;
+}
+
+.studyperks-logo-wrap--plain .studyperks-power-indicator {
+  top: 70%;
+  left: 80%;
 }
 
 .studyperks-wrapper--applied .studyperks-power-indicator {
@@ -61,11 +79,11 @@
   align-items: center;
   gap: 6px;
   background: #fff;
-  border: 1.5px solid #5B21B6;
+  border: 1.5px solid #000;
   border-radius: 10px;
   padding: 7px 10px;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(91, 33, 182, 0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.2s ease, transform 0.15s ease;
   -webkit-appearance: none;
   appearance: none;
@@ -74,7 +92,7 @@
 }
 
 .studyperks-badge:hover:not(:disabled) {
-  box-shadow: 0 3px 10px rgba(91, 33, 182, 0.2);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   transform: translateY(-1px);
 }
 
@@ -149,7 +167,7 @@
   padding: 6px 10px;
   border-radius: 6px;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 2147483647;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
@@ -162,7 +180,7 @@
   border-bottom-color: #1f1f1f;
 }
 
-.studyperks-wrapper:hover .studyperks-tooltip:not(.studyperks-tooltip--hidden) {
+.studyperks-tooltip--visible:not(.studyperks-tooltip--hidden) {
   display: block;
 }
 
@@ -192,7 +210,7 @@
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #15803d;
+  color: #000;
   white-space: nowrap;
 }
 
@@ -237,9 +255,14 @@
   display: none;
   margin: 0;
   max-width: 260px;
-  color: #15803d;
+  color: #000 !important;
   font: 700 12px/1.35 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   text-align: center;
+}
+
+.studyperks-applied-message .studyperks-verified-tick,
+.studyperks-account-menu__status .studyperks-verified-tick {
+  color: #15803d !important;
 }
 
 .studyperks-wrapper--applied .studyperks-applied-message {
@@ -261,11 +284,11 @@
   display: none;
   position: fixed;
   background: #fff;
-  border: 1.5px solid #5B21B6;
+  border: 1.5px solid #000;
   border-radius: 10px;
   padding: 8px 10px;
   z-index: 9999;
-  box-shadow: 0 2px 12px rgba(91, 33, 182, 0.15);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
@@ -293,7 +316,7 @@
   margin: 0;
   font-size: 11px;
   line-height: 1.4;
-  color: #4c1d95;
+  color: #000;
   white-space: normal;
 }
 
@@ -305,7 +328,7 @@
   display: none;
   font-size: 11px;
   font-weight: 700;
-  color: #5B21B6;
+  color: #000;
   text-decoration: none;
 }
 
@@ -323,11 +346,11 @@
   bottom: 100%;
   left: 16px;
   border: 5px solid transparent;
-  border-bottom-color: #5B21B6;
+  border-bottom-color: #000;
 }
 
 /* Hide tooltip while email prompt is open */
-.studyperks-wrapper.studyperks-prompt-open .studyperks-tooltip {
+.studyperks-tooltip--hidden {
   display: none !important;
 }
 
@@ -374,7 +397,7 @@
   border-radius: 6px;
   padding: 6px 8px;
   /* 16px minimum — iOS Safari auto-zooms the page on focus for any input below that */
-  font-size: 16px;
+  font-size: 16px !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   outline: none;
   box-sizing: border-box !important;
@@ -386,17 +409,17 @@
 }
 
 .studyperks-email-input:focus {
-  border-color: #5B21B6;
+  border-color: #1437ff;
 }
 
 .studyperks-email-submit {
-  background: #5B21B6;
+  background: #b7e219;
   border: none;
   border-radius: 6px;
-  color: #fff;
+  color: #000;
   padding: 6px 12px;
-  min-width: 42px !important;
-  min-height: 38px;
+  min-width: 44px !important;
+  min-height: 44px;
   font-size: 18px;
   cursor: pointer;
   font-weight: 700;
@@ -407,7 +430,7 @@
 }
 
 .studyperks-email-submit:hover {
-  background: #4c1d95;
+  background: #a6cf12;
 }
 
 .studyperks-email-submit:disabled {
@@ -416,13 +439,115 @@
 }
 
 
+/* Panels are attached to body so theme stacking contexts cannot trap them. */
+.studyperks-email-prompt,
+.studyperks-account-menu {
+  z-index: 2147483647;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.studyperks-toast {
+  z-index: 2147483647;
+  color: #000 !important;
+  background: #fff !important;
+}
+
+/* Keep popup colours consistent when a storefront styles links and buttons. */
+.studyperks-email-prompt,
+.studyperks-account-menu {
+  color: #000 !important;
+  background: #fff !important;
+}
+
+.studyperks-email-prompt .studyperks-email-prompt__message,
+.studyperks-email-prompt .studyperks-email-input,
+.studyperks-email-prompt .studyperks-email-prompt__link,
+.studyperks-account-menu .studyperks-account-menu__status,
+.studyperks-account-menu .studyperks-account-menu__disconnect {
+  color: #000 !important;
+}
+
+.studyperks-email-prompt #studyperks-verify-link {
+  color: #fff !important;
+  background: #000 !important;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 5px;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.3;
+  text-decoration: none;
+  align-self: flex-start;
+  transition: background-color 0.15s ease;
+}
+
+.studyperks-email-prompt #studyperks-verify-link:hover {
+  background: #292929 !important;
+}
+
+.studyperks-email-prompt .studyperks-email-submit {
+  color: #000 !important;
+  background: #b7e219 !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px;
+  padding: 6px 10px;
+  transition: background-color 0.15s ease;
+}
+
+.studyperks-email-prompt .studyperks-email-submit:hover {
+  background: #a6cf12 !important;
+}
+
+.studyperks-email-prompt :focus-visible,
+.studyperks-account-menu :focus-visible {
+  outline: 2px solid #1437ff;
+  outline-offset: 2px;
+}
+
+/* Storefront button hover rules must not cover or recolour the logo. */
+#studyperks-wallet-connect,
+#studyperks-wallet-connect:hover,
+#studyperks-wallet-connect:focus,
+#studyperks-wallet-connect:active {
+  background: #fff !important;
+  background-image: none !important;
+  color: #000 !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+#studyperks-wallet-connect.studyperks-badge--compact,
+#studyperks-wallet-connect.studyperks-badge--compact:hover,
+#studyperks-wallet-connect.studyperks-badge--compact:focus,
+#studyperks-wallet-connect.studyperks-badge--compact:active {
+  background: transparent !important;
+}
+
+#studyperks-wallet-connect::before,
+#studyperks-wallet-connect::after {
+  content: none !important;
+}
+
+#studyperks-wallet-connect .studyperks-badge__logo {
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+#studyperks-wallet-connect .studyperks-badge__logo--black {
+  filter: brightness(0) !important;
+}
+
+#studyperks-wallet-connect .studyperks-badge__logo--white {
+  filter: brightness(0) invert(1) !important;
+}
+
 /* Mobile storefronts often add transformed/stacked review widgets. Keep the
    StudyPerks controls visible above those widgets and inside the viewport. */
 @media (max-width: 600px) {
-  .studyperks-wrapper {
-    z-index: 2147483000;
-    overflow: visible !important;
-  }
   .studyperks-email-prompt,
   .studyperks-account-menu {
     z-index: 2147483647;
@@ -432,6 +557,10 @@
   }
   .studyperks-email-prompt__row {
     min-width: 0;
+  }
+  .studyperks-email-prompt::before,
+  .studyperks-account-menu::before {
+    display: none;
   }
   .studyperks-email-input {
     min-width: 0;

@@ -1,0 +1,9 @@
+.env
+.env.*
+.git
+.shopify
+.codex
+.agents
+node_modules
+build
+.cache
